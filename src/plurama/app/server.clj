@@ -66,7 +66,7 @@
   (let [parts (db/init-conn (:db config))
         agent-ctx (build-agent-ctx parts config)
         json-routes (json-routes agent-ctx)
-        html-routes (-> (html-routes (:conn parts) umbrella) wrap-params)]
+        html-routes (-> (html-routes parts umbrella) wrap-params)]
     (fn [req]
       (if (= "/webhook/telegram" (:uri req))
         (json-routes req)
