@@ -8,3 +8,4 @@ config.edn.*
 !config.edn.template
 logs
 data
+backups

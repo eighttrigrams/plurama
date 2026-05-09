@@ -3,9 +3,16 @@
 
  :default :personalist
 
- :hosts {"plurama.fly.dev"  :personalist
-         "personalist.org"  :personalist}
+ :hosts {"plurama.fly.dev"   :personalist
+         "personalist.org"   :personalist
+         "www.personalist.org" :personalist
+         "eighttrigrams.net" :blog
+         "www.eighttrigrams.net" :blog}
 
  :apps {:personalist {:db {:type :sqlite-on-disk
                            :path "/app/data/personalist.db"}
-                      :logging {:level :info}}}}
+                      :logging {:level :info}}
+
+        :blog {:db {:type :sqlite-file
+                    :path "/app/data/blog.db"}
+               :image-base-url "https://daniel-de-oliveira.com"}}}

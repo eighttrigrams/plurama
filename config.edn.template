@@ -5,7 +5,9 @@
 
  :hosts {"localhost"             :personalist
          "personalist.localhost" :personalist
-         "personalist.org"       :personalist}
+         "personalist.org"       :personalist
+         "blog.localhost"        :blog
+         "eighttrigrams.net"     :blog}
 
  :apps {:personalist {:db {:type :sqlite-on-disk
                            :path "../personalist/data/personalist.db"}
@@ -14,4 +16,8 @@
                               :dangerously-skip-logins? false}
                       :logging {:file "logs/personalist.log"
                                 :level :debug
-                                :format :human}}}}
+                                :format :human}}
+
+        :blog {:db {:type :sqlite-file
+                    :path "../blog/data/blog.db"}
+               :image-base-url "https://daniel-de-oliveira.com"}}}

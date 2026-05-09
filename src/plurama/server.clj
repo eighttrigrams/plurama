@@ -4,7 +4,8 @@
             [clojure.string :as str]
             [ring.adapter.jetty9 :as jetty]
             [nrepl.server :as nrepl]
-            [et.pe.server :as personalist])
+            [et.pe.server :as personalist]
+            [et.blog.server :as blog])
   (:gen-class))
 
 (defn- host-only [req]
@@ -34,7 +35,9 @@
 (defn -main [& _args]
   (let [config (load-config)
         apps   {:personalist (personalist/build-handler
-                              (get-in config [:apps :personalist]))}
+                              (get-in config [:apps :personalist]))
+                :blog        (blog/build-handler
+                              (get-in config [:apps :blog]))}
         host->handler (into {} (for [[host k] (:hosts config)]
                                  [(str/lower-case host) (get apps k)]))
         fallback (get apps (:default config))

@@ -15,6 +15,11 @@ COPY personalist/resources       ./personalist/resources
 
 RUN cd personalist && npx shadow-cljs release app
 
+COPY blog/deps.edn   ./blog/
+COPY blog/build.clj  ./blog/
+COPY blog/src        ./blog/src
+COPY blog/resources  ./blog/resources
+
 COPY plurama/deps.edn  ./plurama/
 COPY plurama/build.clj ./plurama/
 COPY plurama/src       ./plurama/src
