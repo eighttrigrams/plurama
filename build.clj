@@ -22,6 +22,15 @@
                   :class-dir class-dir
                   :ns-compile '[plurama.server
                                 plurama.app.server
+                                plurama.app.handlers
+                                plurama.app.users
+                                plurama.app.views
+                                plurama.app.auth
+                                plurama.app.agent.ai
+                                plurama.app.agent.app-client
+                                plurama.app.agent.db
+                                plurama.app.agent.telegram
+                                plurama.app.agent.tools
                                 et.pe.server
                                 et.blog.server]
                   :java-opts []})

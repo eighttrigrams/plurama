@@ -11,7 +11,9 @@
          "eighttrigrams.net"     :blog}
 
  :apps {:plurama {:db {:type :sqlite-on-disk
-                       :path "data/plurama.db"}}
+                       :path "data/plurama.db"}
+                  :agent {:tracker {:base-url "http://127.0.0.1:3027"
+                                    :skill   "agent/tracker-api-skill.md"}}}
 
         :personalist {:db {:type :sqlite-on-disk
                            :path "../personalist/data/personalist.db"}

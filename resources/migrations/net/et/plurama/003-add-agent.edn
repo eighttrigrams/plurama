@@ -1,0 +1,23 @@
+{:id "003-add-agent"
+ :up ["CREATE TABLE IF NOT EXISTS telegram_users (
+         telegram_user_id TEXT PRIMARY KEY,
+         user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+         display_name TEXT,
+         created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+       )"
+      "CREATE INDEX IF NOT EXISTS idx_telegram_users_user ON telegram_users(user_id)"
+      "CREATE TABLE IF NOT EXISTS agent_messages (
+         id INTEGER PRIMARY KEY AUTOINCREMENT,
+         user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+         turn_id INTEGER NOT NULL,
+         role TEXT NOT NULL,
+         content TEXT NOT NULL,
+         created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+       )"
+      "CREATE INDEX IF NOT EXISTS idx_agent_messages_user_turn
+         ON agent_messages(user_id, turn_id DESC)"]
+ :down ["DROP INDEX IF EXISTS idx_agent_messages_user_turn"
+        "DROP TABLE IF EXISTS agent_messages"
+        "DROP INDEX IF EXISTS idx_telegram_users_user"
+        "DROP TABLE IF EXISTS telegram_users"]
+ :transactions false}

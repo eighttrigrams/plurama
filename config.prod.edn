@@ -12,6 +12,8 @@
 
  :apps {:plurama {:db {:type :sqlite-on-disk
                        :path "/app/data/plurama.db"}
+                  :agent {:tracker {:base-url "https://tracker-ibh-lq.fly.dev"
+                                    :skill   "agent/tracker-api-skill.md"}}
                   :logging {:level :info}}
 
         :personalist {:db {:type :sqlite-on-disk

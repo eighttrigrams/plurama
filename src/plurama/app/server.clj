@@ -1,38 +1,73 @@
 (ns plurama.app.server
-  (:require [plurama.app.db :as db]))
+  (:require [compojure.core :refer [GET POST routes context]]
+            [compojure.route :as route]
+            [ring.middleware.params :refer [wrap-params]]
+            [ring.middleware.json :refer [wrap-json-body wrap-json-response]]
+            [clojure.java.io :as io]
+            [plurama.app.db :as db]
+            [plurama.app.handlers :as h]
+            [plurama.app.agent.ai :as agent.ai]
+            [plurama.app.agent.telegram :as agent.telegram]))
 
-(defn- landing-page-html [umbrella]
-  (str
-    "<!DOCTYPE html><html><head><meta charset=\"utf-8\">"
-    "<title>plurama</title>"
-    "<style>body{font-family:system-ui,sans-serif;max-width:640px;margin:4em auto;padding:0 1em;color:#222}"
-    "h1{font-weight:300}"
-    "ul{list-style:none;padding:0}"
-    "li{padding:.5em 0;border-bottom:1px solid #eee}"
-    "a{color:#06c;text-decoration:none}a:hover{text-decoration:underline}"
-    "code{background:#f4f4f4;padding:.1em .3em;border-radius:3px;font-size:.9em}"
-    "</style></head><body>"
-    "<h1>plurama</h1>"
-    "<p>An umbrella JVM hosting multiple apps, routed by Host header.</p>"
-    "<h2>Hosted apps</h2><ul>"
-    (apply str
-      (for [[host k] (sort-by first (:hosts umbrella))
-            :when (not= k :plurama)]
-        (str "<li><a href=\"https://" host "/\">" host "</a> &rarr; <code>"
-             (name k) "</code></li>")))
-    "</ul></body></html>"))
+(defn- load-resource [path]
+  (when path
+    (when-let [r (io/resource path)]
+      (slurp r))))
+
+(defn- collect-app-skills
+  "For each configured agent app, slurp the :skill resource (if any)
+  and return a vector of {:app :skill-md} pairs in deterministic order."
+  [agent-apps]
+  (vec (for [[app-key {:keys [skill]}] (sort-by (comp name first) agent-apps)]
+         {:app (name app-key)
+          :skill-md (load-resource skill)})))
+
+(defn- build-agent-ctx [{:keys [conn]} {:keys [agent]}]
+  (let [agent-apps (or agent {})
+        app-skills (collect-app-skills agent-apps)]
+    {:conn conn
+     :webhook-secret  (System/getenv "TELEGRAM_WEBHOOK_SECRET")
+     :anthropic-key   (System/getenv "ANTHROPIC_API_KEY")
+     :bot-token       (System/getenv "TELEGRAM_BOT_TOKEN")
+     :agent-apps      agent-apps
+     :system-prompt   (agent.ai/build-system-prompt app-skills)}))
+
+(defn- html-routes [conn umbrella]
+  (routes
+    (GET  "/"       []      (h/landing {:umbrella umbrella}))
+    (GET  "/login"  []      h/login-page)
+    (POST "/login"  []      h/login-submit)
+    (GET  "/logout" []      h/logout)
+    (context "/admin" []
+      (-> (routes
+            (GET  "/users"                  [] (h/users-list   conn))
+            (POST "/users"                  [] (h/users-create conn))
+            (POST "/users/:id/delete"       [] (h/users-delete conn))
+            (GET  "/users/:id"              [] (h/user-show    conn))
+            (POST "/users/:id/password"     [] (h/password-update conn))
+            (POST "/users/:id/credentials"  [] (h/cred-create  conn))
+            (POST "/users/:id/credentials/:cred-id/delete" [] (h/cred-delete conn))
+            (POST "/users/:id/telegram"        [] (h/telegram-update conn))
+            (POST "/users/:id/telegram/delete" [] (h/telegram-delete conn)))
+          h/require-login))
+    (route/not-found {:status 404
+                      :headers {"Content-Type" "text/plain"}
+                      :body "Not Found"})))
+
+(defn- json-routes [agent-ctx]
+  (-> (routes
+        (POST "/webhook/telegram" [] (agent.telegram/webhook-handler agent-ctx)))
+      (wrap-json-body {:keywords? true})
+      wrap-json-response))
 
 (defn build-handler
-  "Initialise plurama's own db and return a ring handler.
-   `config` must include `:db` (per-app) and `:umbrella` (the full plurama config
-   so the landing page can list other hosted apps)."
+  "Initialise plurama's own db and return a ring handler."
   [{:keys [umbrella] :as config}]
-  (db/init-conn (:db config))
-  (fn [req]
-    (case (:uri req)
-      "/" {:status 200
-           :headers {"Content-Type" "text/html; charset=utf-8"}
-           :body (landing-page-html umbrella)}
-      {:status 404
-       :headers {"Content-Type" "text/plain"}
-       :body "Not Found"})))
+  (let [parts (db/init-conn (:db config))
+        agent-ctx (build-agent-ctx parts config)
+        json-routes (json-routes agent-ctx)
+        html-routes (-> (html-routes (:conn parts) umbrella) wrap-params)]
+    (fn [req]
+      (if (= "/webhook/telegram" (:uri req))
+        (json-routes req)
+        (html-routes req)))))

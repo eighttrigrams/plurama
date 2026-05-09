@@ -1,0 +1,114 @@
+(ns plurama.app.agent.telegram
+  (:require [plurama.app.agent.ai :as ai]
+            [plurama.app.agent.db :as db]
+            [clojure.data.json :as json])
+  (:import [java.net URI]
+           [java.net.http HttpClient HttpRequest HttpRequest$BodyPublishers HttpResponse$BodyHandlers]
+           [java.time Duration]))
+
+(def ^:private client (HttpClient/newHttpClient))
+
+(defn- send-telegram-message [bot-token chat-id text]
+  (when bot-token
+    (try
+      (println "Telegram out [" chat-id "]:" text)
+      (let [body {:chat_id chat-id :text text}
+            request (-> (HttpRequest/newBuilder)
+                        (.uri (URI/create (str "https://api.telegram.org/bot" bot-token "/sendMessage")))
+                        (.timeout (Duration/ofSeconds 30))
+                        (.header "Content-Type" "application/json")
+                        (.POST (HttpRequest$BodyPublishers/ofString (json/write-str body)))
+                        (.build))]
+        (.send client request (HttpResponse$BodyHandlers/ofString)))
+      (catch Exception e
+        (println "Failed to send Telegram message:" (.getMessage e))))))
+
+(defn- build-app-ctxs
+  "Intersect the configured agent apps with the user's per-app
+  credentials. Returns a map app-name (string) → {:base-url :username
+  :password}, or {} if the user has no usable credentials."
+  [conn user-id agent-apps]
+  (let [creds-by-app (->> (db/list-user-credentials conn user-id)
+                          (map (juxt :app identity))
+                          (into {}))]
+    (reduce-kv
+      (fn [acc app-key {:keys [base-url]}]
+        (let [app-name (name app-key)]
+          (if-let [{:keys [username password]} (get creds-by-app app-name)]
+            (assoc acc app-name {:base-url base-url
+                                 :username username
+                                 :password password})
+            acc)))
+      {}
+      agent-apps)))
+
+(defn- handle-update
+  [{:keys [conn anthropic-key bot-token agent-apps system-prompt]}
+   from-id chat-id text]
+  (if-let [{:keys [user_id]} (db/lookup-telegram-user conn from-id)]
+    (let [app-ctxs (build-app-ctxs conn user_id agent-apps)]
+      (if (seq app-ctxs)
+        (let [on-tool-call (fn [tool-name input result]
+                             (send-telegram-message
+                               bot-token chat-id
+                               (str "[tool] " tool-name " " (json/write-str input)
+                                    " = " result)))
+              reply-text (ai/chat
+                           {:conn conn
+                            :user-id user_id
+                            :anthropic-key anthropic-key
+                            :app-ctxs app-ctxs
+                            :system-prompt system-prompt
+                            :on-tool-call on-tool-call}
+                           text)]
+          (send-telegram-message bot-token chat-id reply-text))
+        (do (println "No usable app credentials for plurama user" user_id)
+            (send-telegram-message
+              bot-token chat-id
+              "I don't have any app credentials configured for your account yet."))))
+    (do (println "Unmapped Telegram user:" from-id)
+        ;; Stay silent for unmapped users to avoid leaking the bot's existence.
+        nil)))
+
+(defn webhook-handler
+  "Ring handler for POST /webhook/telegram. `agent-ctx` carries the
+  shared state:
+    :conn           plurama jdbc connection
+    :webhook-secret expected x-telegram-bot-api-secret-token
+    :anthropic-key  Anthropic API key
+    :bot-token      Telegram bot token (for outbound replies)
+    :agent-apps     map app-key → {:base-url ...} of configured apps
+    :system-prompt  precomputed system prompt incl. all app skills
+
+  Behaviour:
+   - 503 if no webhook-secret configured
+   - 403 on bad/missing x-telegram-bot-api-secret-token header
+   - 200 {:ok true} otherwise (Telegram retries on non-2xx, so we
+     always return 200 once auth passes; failures are logged and the
+     user is told via Telegram)"
+  [agent-ctx]
+  (fn [req]
+    (let [{:keys [webhook-secret]} agent-ctx
+          provided-secret (get-in req [:headers "x-telegram-bot-api-secret-token"])]
+      (cond
+        (nil? webhook-secret)
+        (do (println "No Telegram webhook secret defined")
+            {:status 503 :body {:error "Webhook not configured"}})
+
+        (not= webhook-secret provided-secret)
+        (do (println "Unauthorized Telegram webhook access attempt")
+            {:status 403 :body {:error "Unauthorized"}})
+
+        :else
+        (let [update  (:body req)
+              message (or (:message update) (:edited_message update))
+              text    (:text message)
+              chat-id (get-in message [:chat :id])
+              from-id (some-> (get-in message [:from :id]) str)]
+          (when (and from-id text chat-id)
+            (println "Telegram in [" chat-id "] from" from-id ":" text)
+            (try
+              (handle-update agent-ctx from-id chat-id text)
+              (catch Exception e
+                (println "Error handling Telegram message:" (.getMessage e)))))
+          {:status 200 :body {:ok true}})))))
