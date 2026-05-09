@@ -32,13 +32,16 @@
   "Wrap a handler so only the admin or the user whose id matches the
   first numeric `/users/<id>` segment in the URI can reach it.
   Extracts the id from `:uri` directly because this wrapper runs
-  before compojure parses path params."
+  before compojure parses path params. Returns nil when the URI
+  doesn't carry a `/users/<id>` segment so compojure can fall through
+  to the next route group."
   [handler]
   (fn [req]
     (let [m (re-find #"/users/(\d+)" (or (:uri req) ""))
           target-id (when m (Integer/parseInt (second m)))]
       (cond
-        (and target-id (auth/self-or-admin? req target-id)) (handler req)
+        (nil? target-id) nil
+        (auth/self-or-admin? req target-id) (handler req)
         (auth/logged-in? req) (redirect "/me")
         :else (redirect "/login")))))
 

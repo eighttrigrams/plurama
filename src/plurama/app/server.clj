@@ -57,8 +57,13 @@
     (GET  "/logout" []      h/logout)
     (GET  "/me"     []      h/me-redirect)
     (context "/admin" []
-      (admin-routes conn)
-      (self-routes conn))
+      ;; Self-routes (require-self-or-admin) is tried first; it returns
+      ;; nil when the URI has no /users/<id> segment, falling through
+      ;; to admin-routes. Reversing this order causes a redirect loop:
+      ;; require-admin would bounce non-admins on /admin/users/<self>
+      ;; to /me which redirects right back here.
+      (self-routes conn)
+      (admin-routes conn))
     (route/not-found {:status 404
                       :headers {"Content-Type" "text/plain"}
                       :body "Not Found"})))
