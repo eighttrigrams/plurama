@@ -23,6 +23,7 @@ COPY blog/resources  ./blog/resources
 COPY plurama/deps.edn  ./plurama/
 COPY plurama/build.clj ./plurama/
 COPY plurama/src       ./plurama/src
+COPY plurama/resources ./plurama/resources
 
 RUN cd plurama && clj -Sdeps '{:mvn/local-repo "./.m2/repository"}' -T:build uber
 

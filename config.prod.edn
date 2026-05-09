@@ -1,15 +1,20 @@
 {:server {:port 8080
           :host "0.0.0.0"}
 
- :default :personalist
+ :default :plurama
 
- :hosts {"plurama.fly.dev"   :personalist
-         "personalist.org"   :personalist
-         "www.personalist.org" :personalist
-         "eighttrigrams.net" :blog
-         "www.eighttrigrams.net" :blog}
+ :hosts {"plurama.fly.dev"            :plurama
+         "plurama.eighttrigrams.net"  :plurama
+         "personalist.org"            :personalist
+         "www.personalist.org"        :personalist
+         "eighttrigrams.net"          :blog
+         "www.eighttrigrams.net"      :blog}
 
- :apps {:personalist {:db {:type :sqlite-on-disk
+ :apps {:plurama {:db {:type :sqlite-on-disk
+                       :path "/app/data/plurama.db"}
+                  :logging {:level :info}}
+
+        :personalist {:db {:type :sqlite-on-disk
                            :path "/app/data/personalist.db"}
                       :logging {:level :info}}
 

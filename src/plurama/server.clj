@@ -5,7 +5,8 @@
             [ring.adapter.jetty9 :as jetty]
             [nrepl.server :as nrepl]
             [et.pe.server :as personalist]
-            [et.blog.server :as blog])
+            [et.blog.server :as blog]
+            [plurama.app.server :as plurama-app])
   (:gen-class))
 
 (defn- host-only [req]
@@ -37,7 +38,10 @@
         apps   {:personalist (personalist/build-handler
                               (get-in config [:apps :personalist]))
                 :blog        (blog/build-handler
-                              (get-in config [:apps :blog]))}
+                              (get-in config [:apps :blog]))
+                :plurama     (plurama-app/build-handler
+                              (assoc (get-in config [:apps :plurama])
+                                     :umbrella config))}
         host->handler (into {} (for [[host k] (:hosts config)]
                                  [(str/lower-case host) (get apps k)]))
         fallback (get apps (:default config))

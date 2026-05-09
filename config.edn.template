@@ -1,15 +1,19 @@
 {:server {:port 3017
           :host "127.0.0.1"}
 
- :default :personalist
+ :default :plurama
 
- :hosts {"localhost"             :personalist
+ :hosts {"localhost"             :plurama
+         "plurama.localhost"     :plurama
          "personalist.localhost" :personalist
          "personalist.org"       :personalist
          "blog.localhost"        :blog
          "eighttrigrams.net"     :blog}
 
- :apps {:personalist {:db {:type :sqlite-on-disk
+ :apps {:plurama {:db {:type :sqlite-on-disk
+                       :path "data/plurama.db"}}
+
+        :personalist {:db {:type :sqlite-on-disk
                            :path "../personalist/data/personalist.db"}
                       :devel {:pre-seed? false
                               :shadow? true
