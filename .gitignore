@@ -1,0 +1,10 @@
+.cpcache
+.clj-kondo
+.lsp
+.nrepl-port
+target
+config.edn
+config.edn.*
+!config.edn.template
+logs
+data

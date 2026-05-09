@@ -1,0 +1,8 @@
+{:paths ["src"]
+ :deps {org.clojure/clojure              {:mvn/version "1.12.0"}
+        info.sunng/ring-jetty9-adapter   {:mvn/version "0.38.0"}
+        nrepl/nrepl                      {:mvn/version "1.5.1"}
+        eighttrigrams/personalist        {:local/root "../personalist"}}
+ :aliases {:run {:exec-fn plurama.server/-main}
+           :build {:deps {io.github.clojure/tools.build {:git/tag "v0.10.5" :git/sha "2a21b7a"}}
+                   :ns-default build}}}
