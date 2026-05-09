@@ -12,8 +12,11 @@
   (or (System/getenv "ADMIN_PASSWORD")
       (when-not (System/getenv "FLY_APP_NAME") "admin")))
 
-(defn create-token []
-  (jwt/sign {:admin true} (jwt-secret)))
+(defn create-admin-token []
+  (jwt/sign {:role :admin} (jwt-secret)))
+
+(defn create-user-token [user-id]
+  (jwt/sign {:role :user :user-id user-id} (jwt-secret)))
 
 (defn verify-token [token]
   (try
@@ -27,8 +30,30 @@
          (map #(let [[k v] (str/split % #"=" 2)] [k v]))
          (into {}))))
 
-(defn logged-in? [req]
+(defn current-identity
+  "Return the JWT claims map (e.g. {:role :admin} or
+  {:role :user :user-id 7}) for the request, or nil if not logged in."
+  [req]
   (when-let [token (some-> (get-in req [:headers "cookie"])
                            parse-cookie-header
                            (get "token"))]
-    (some? (verify-token token))))
+    (verify-token token)))
+
+(defn logged-in? [req]
+  (some? (current-identity req)))
+
+(defn admin? [req]
+  (= "admin" (some-> (current-identity req) :role name)))
+
+(defn current-user-id
+  "Return the plurama user-id of the logged-in non-admin user, or nil
+  (admins do not have a user-id, only the :admin role)."
+  [req]
+  (let [{:keys [role user-id]} (current-identity req)]
+    (when (= "user" (some-> role name)) user-id)))
+
+(defn self-or-admin?
+  "True if the request is by the admin or by user-id matching `target-id`."
+  [req target-id]
+  (or (admin? req)
+      (= (current-user-id req) target-id)))

@@ -25,15 +25,20 @@ table{width:100%;border-collapse:collapse;margin:1em 0}
 th,td{text-align:left;padding:.5em;border-bottom:1px solid #eee}
 ")
 
-(defn- nav [logged-in?]
+(defn- nav [{:keys [logged-in? admin?]}]
   [:nav
    [:a {:href "/"} "plurama"]
-   (if logged-in?
+   (cond
+     admin?
      (list [:a {:href "/admin/users"} "users"]
            [:a {:href "/logout"} "log out"])
+     logged-in?
+     (list [:a {:href "/me"} "my account"]
+           [:a {:href "/logout"} "log out"])
+     :else
      [:a {:href "/login"} "log in"])])
 
-(defn- layout [{:keys [title logged-in?]} & body]
+(defn- layout [{:keys [title logged-in? admin?]} & body]
   (str "<!DOCTYPE html>"
        (h/html
          [:html
@@ -42,11 +47,11 @@ th,td{text-align:left;padding:.5em;border-bottom:1px solid #eee}
            [:title (or title "plurama")]
            [:style (h/raw style)]]
           [:body
-           (nav logged-in?)
+           (nav {:logged-in? logged-in? :admin? admin?})
            body]])))
 
-(defn landing-page [{:keys [umbrella logged-in?]}]
-  (layout {:title "plurama" :logged-in? logged-in?}
+(defn landing-page [{:keys [umbrella logged-in? admin?]}]
+  (layout {:title "plurama" :logged-in? logged-in? :admin? admin?}
     [:h1 "plurama"]
     [:p "An umbrella JVM hosting multiple apps, routed by Host header."]
     [:h2 "Hosted apps"]
@@ -57,16 +62,18 @@ th,td{text-align:left;padding:.5em;border-bottom:1px solid #eee}
         [:a {:href (str "https://" host "/")} host]
         [:code (name k)]])]))
 
-(defn login-page [{:keys [error]}]
+(defn login-page [{:keys [error name]}]
   (layout {:title "log in — plurama"}
     [:h1 "Log in"]
     (when error [:div.error error])
     [:form.row {:method "post" :action "/login"}
-     [:input {:type "password" :name "password" :placeholder "admin password" :autofocus true}]
+     [:input {:type "text" :name "name" :placeholder "user name (leave blank for admin)"
+              :value (or name "") :autofocus true}]
+     [:input {:type "password" :name "password" :placeholder "password"}]
      [:button {:type "submit"} "Log in"]]))
 
 (defn users-page [{:keys [users error]}]
-  (layout {:title "users — plurama" :logged-in? true}
+  (layout {:title "users — plurama" :logged-in? true :admin? true}
     [:h1 "Users"]
     (when error [:div.error error])
     [:form.row {:method "post" :action "/admin/users"}
@@ -88,11 +95,27 @@ th,td{text-align:left;padding:.5em;border-bottom:1px solid #eee}
            [:button.danger {:type "submit"} "Delete"]]])]
       [:p.muted "No users yet."])))
 
-(defn user-page [{:keys [user credentials telegram-link error]}]
-  (layout {:title (str (:name user) " — plurama") :logged-in? true}
+(defn user-page [{:keys [user credentials telegram-link admin? error]}]
+  (layout {:title (str (:name user) " — plurama")
+           :logged-in? true
+           :admin? admin?}
     [:h1 (:name user)]
     [:p.muted "Created " (:created_at user)]
     (when error [:div.error error])
+
+    [:h2 "Password"]
+    [:p.muted "Used together with the user name (" [:code (:name user)]
+     ") to log in to plurama."]
+    [:p "Current: "
+     (if (:password user)
+       [:code (:password user)]
+       [:span.muted "(not set)"])]
+    [:form.row {:method "post" :action (str "/admin/users/" (:id user) "/password")}
+     [:input {:type "text" :name "password"
+              :placeholder "new password" :required true
+              :value (or (:password user) "")}]
+     [:button {:type "submit"} "Set password"]]
+
     [:h2 "Telegram"]
     [:p.muted "Map this plurama user to a Telegram account. The bot uses the "
      "Telegram " [:code "from.id"] " on each incoming message to look up which user "
@@ -116,19 +139,9 @@ th,td{text-align:left;padding:.5em;border-bottom:1px solid #eee}
                       :action (str "/admin/users/" (:id user) "/telegram/delete")
                       :onsubmit "return confirm('Remove Telegram link?')"}
         [:button.danger {:type "submit"} "Unlink"]])]
-    [:h2 "Password"]
-    [:p.muted "Used together with the user name (" [:code (:name user)]
-     ") to log in to other apps."]
-    [:p "Current: "
-     (if (:password user)
-       [:code (:password user)]
-       [:span.muted "(not set)"])]
-    [:form.row {:method "post" :action (str "/admin/users/" (:id user) "/password")}
-     [:input {:type "text" :name "password"
-              :placeholder "new password" :required true
-              :value (or (:password user) "")}]
-     [:button {:type "submit"} "Set password"]]
-    [:h2 "Per-app credentials"]
+
+    [:h2 "Linked apps"]
+    [:p.muted "Per-app credentials the bot uses to act on your behalf."]
     [:form.row {:method "post" :action (str "/admin/users/" (:id user) "/credentials")}
      [:input {:type "text" :name "app" :placeholder "app (e.g. tracker)" :required true}]
      [:input {:type "text" :name "username" :placeholder "username" :required true}]

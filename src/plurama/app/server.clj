@@ -32,24 +32,33 @@
      :agent-apps      agent-apps
      :system-prompt   (agent.ai/build-system-prompt app-skills)}))
 
+(defn- admin-routes [conn]
+  (-> (routes
+        (GET  "/users"            []      (h/users-list   conn))
+        (POST "/users"            []      (h/users-create conn))
+        (POST "/users/:id/delete" []      (h/users-delete conn)))
+      h/require-admin))
+
+(defn- self-routes [conn]
+  (-> (routes
+        (GET  "/users/:id"              [] (h/user-show       conn))
+        (POST "/users/:id/password"     [] (h/password-update conn))
+        (POST "/users/:id/credentials"  [] (h/cred-create     conn))
+        (POST "/users/:id/credentials/:cred-id/delete" [] (h/cred-delete conn))
+        (POST "/users/:id/telegram"        [] (h/telegram-update conn))
+        (POST "/users/:id/telegram/delete" [] (h/telegram-delete conn)))
+      h/require-self-or-admin))
+
 (defn- html-routes [conn umbrella]
   (routes
     (GET  "/"       []      (h/landing {:umbrella umbrella}))
     (GET  "/login"  []      h/login-page)
-    (POST "/login"  []      h/login-submit)
+    (POST "/login"  []      (h/login-submit conn))
     (GET  "/logout" []      h/logout)
+    (GET  "/me"     []      h/me-redirect)
     (context "/admin" []
-      (-> (routes
-            (GET  "/users"                  [] (h/users-list   conn))
-            (POST "/users"                  [] (h/users-create conn))
-            (POST "/users/:id/delete"       [] (h/users-delete conn))
-            (GET  "/users/:id"              [] (h/user-show    conn))
-            (POST "/users/:id/password"     [] (h/password-update conn))
-            (POST "/users/:id/credentials"  [] (h/cred-create  conn))
-            (POST "/users/:id/credentials/:cred-id/delete" [] (h/cred-delete conn))
-            (POST "/users/:id/telegram"        [] (h/telegram-update conn))
-            (POST "/users/:id/telegram/delete" [] (h/telegram-delete conn)))
-          h/require-login))
+      (admin-routes conn)
+      (self-routes conn))
     (route/not-found {:status 404
                       :headers {"Content-Type" "text/plain"}
                       :body "Not Found"})))

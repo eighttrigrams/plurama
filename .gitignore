@@ -9,3 +9,4 @@ config.edn.*
 logs
 data
 backups
+anthropic_api_key

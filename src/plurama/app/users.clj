@@ -22,6 +22,13 @@
                                   :where [:= :id id]})
                      opts))
 
+(defn find-user-by-name [{:keys [conn]} name]
+  (jdbc/execute-one! conn
+                     (sql/format {:select [:id :name :password :created_at]
+                                  :from [:users]
+                                  :where [:= :name name]})
+                     opts))
+
 (defn set-password! [{:keys [conn]} id password]
   (jdbc/execute-one! conn
                      (sql/format {:update :users
