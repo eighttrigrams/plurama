@@ -1,4 +1,4 @@
-.PHONY: start stop build deploy backup backup-replay-blog backup-replay-personalist clean
+.PHONY: start stop build deploy backup backup-replay-blog backup-replay-personalist backup-replay-tracker clean
 
 start:
 	@DEV=true clj -X:run
@@ -39,6 +39,17 @@ backup-replay-personalist:
 	if [ -z "$$LATEST" ]; then echo "Error: no backup found in backups/. Run 'make backup' first."; exit 1; fi; \
 	echo "Replaying personalist.db from $$LATEST to ../personalist/data/ ..."; \
 	tar -xzf "$$LATEST" -C ../personalist --strip-components=1 app/data/personalist.db && \
+	echo "Done."
+
+backup-replay-tracker:
+	@if [ -d ../tracker/data ]; then \
+		echo "Error: ../tracker/data already exists. Remove it first."; \
+		exit 1; \
+	fi
+	@LATEST=$$(ls -t backups/plurama-data.*.tar.gz 2>/dev/null | head -1); \
+	if [ -z "$$LATEST" ]; then echo "Error: no backup found in backups/. Run 'make backup' first."; exit 1; fi; \
+	echo "Replaying tracker.db from $$LATEST to ../tracker/data/ ..."; \
+	tar -xzf "$$LATEST" -C ../tracker --strip-components=1 app/data/tracker.db && \
 	echo "Done."
 
 clean:

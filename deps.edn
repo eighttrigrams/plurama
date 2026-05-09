@@ -13,7 +13,8 @@
         hiccup/hiccup                     {:mvn/version "2.0.0-RC3"}
         buddy/buddy                       {:mvn/version "2.0.0"}
         eighttrigrams/personalist        {:local/root "../personalist"}
-        eighttrigrams/blog               {:local/root "../blog"}}
+        eighttrigrams/blog               {:local/root "../blog"}
+        eighttrigrams/tracker            {:local/root "../tracker"}}
  :aliases {:run {:exec-fn plurama.server/-main}
            :build {:deps {io.github.clojure/tools.build {:git/tag "v0.10.5" :git/sha "2a21b7a"}}
                    :ns-default build}}}

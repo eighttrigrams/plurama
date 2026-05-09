@@ -8,7 +8,8 @@
          "personalist.org"            :personalist
          "www.personalist.org"        :personalist
          "eighttrigrams.net"          :blog
-         "www.eighttrigrams.net"      :blog}
+         "www.eighttrigrams.net"      :blog
+         "tracker.eighttrigrams.net"  :tracker}
 
  :apps {:plurama {:db {:type :sqlite-on-disk
                        :path "/app/data/plurama.db"}
@@ -22,4 +23,8 @@
 
         :blog {:db {:type :sqlite-file
                     :path "/app/data/blog.db"}
-               :image-base-url "https://daniel-de-oliveira.com"}}}
+               :image-base-url "https://daniel-de-oliveira.com"}
+
+        :tracker {:db {:type :sqlite-file
+                       :path "/app/data/tracker.db"}
+                  :workers? true}}}

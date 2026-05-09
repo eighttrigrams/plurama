@@ -6,6 +6,7 @@
             [nrepl.server :as nrepl]
             [et.pe.server :as personalist]
             [et.blog.server :as blog]
+            [et.tr.server :as tracker]
             [plurama.app.server :as plurama-app])
   (:gen-class))
 
@@ -39,9 +40,14 @@
                               (get-in config [:apps :personalist]))
                 :blog        (blog/build-handler
                               (get-in config [:apps :blog]))
+                :tracker     (tracker/build-app
+                              (get-in config [:apps :tracker]))
                 :plurama     (plurama-app/build-handler
                               (assoc (get-in config [:apps :plurama])
                                      :umbrella config))}
+        _      (when (and (prod-mode?)
+                          (get-in config [:apps :tracker :workers?]))
+                 (tracker/start-workers!))
         host->handler (into {} (for [[host k] (:hosts config)]
                                  [(str/lower-case host) (get apps k)]))
         fallback (get apps (:default config))

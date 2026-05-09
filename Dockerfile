@@ -20,6 +20,17 @@ COPY blog/build.clj  ./blog/
 COPY blog/src        ./blog/src
 COPY blog/resources  ./blog/resources
 
+COPY tracker/package.json tracker/package-lock.json ./tracker/
+RUN cd tracker && npm install
+
+COPY tracker/shadow-cljs.edn ./tracker/
+COPY tracker/deps.edn        ./tracker/
+COPY tracker/build.clj       ./tracker/
+COPY tracker/src             ./tracker/src
+COPY tracker/resources       ./tracker/resources
+
+RUN cd tracker && npx shadow-cljs release app
+
 COPY plurama/deps.edn  ./plurama/
 COPY plurama/build.clj ./plurama/
 COPY plurama/src       ./plurama/src
