@@ -1,4 +1,4 @@
-{:server {:port 3017
+{:server {:port 3016
           :host "127.0.0.1"}
 
  :default :plurama
