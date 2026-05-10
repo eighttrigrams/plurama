@@ -57,6 +57,15 @@
                               :order-by [[:app :asc]]})
                  opts))
 
+(defn find-credential [{:keys [conn]} user-id app]
+  (jdbc/execute-one! conn
+                     (sql/format {:select [:id :app :username :password]
+                                  :from [:user_app_credentials]
+                                  :where [:and
+                                          [:= :user_id user-id]
+                                          [:= :app app]]})
+                     opts))
+
 (defn create-credential! [{:keys [conn]} user-id app username password]
   (jdbc/execute-one! conn
                      (sql/format {:insert-into :user_app_credentials

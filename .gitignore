@@ -6,6 +6,9 @@ target
 config.edn
 config.edn.*
 !config.edn.template
+mail.yaml
+mail.yaml.*
+!mail.yaml.template
 logs
 data
 backups

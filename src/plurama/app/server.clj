@@ -7,7 +7,8 @@
             [plurama.app.db :as db]
             [plurama.app.handlers :as h]
             [plurama.app.agent.ai :as agent.ai]
-            [plurama.app.agent.telegram :as agent.telegram]))
+            [plurama.app.agent.telegram :as agent.telegram]
+            [plurama.app.mail.poller :as mail.poller]))
 
 (defn- load-resource [path]
   (when path
@@ -85,3 +86,10 @@
       (if (= "/webhook/telegram" (:uri req))
         (json-routes req)
         (html-routes req)))))
+
+(defn start-mail-poller!
+  "Open a dedicated db connection and start the mail forwarder thread.
+  Returns the Thread."
+  [config]
+  (let [{:keys [conn]} (db/init-conn (:db config))]
+    (mail.poller/start! conn (:mail config))))

@@ -35,6 +35,9 @@
                                 plurama.app.agent.db
                                 plurama.app.agent.telegram
                                 plurama.app.agent.tools
+                                plurama.app.mail.config
+                                plurama.app.mail.imap
+                                plurama.app.mail.poller
                                 et.pe.server
                                 et.blog.server
                                 et.tr.server]

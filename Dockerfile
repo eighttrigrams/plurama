@@ -39,6 +39,7 @@ COPY plurama/resources ./plurama/resources
 RUN cd plurama && clj -Sdeps '{:mvn/local-repo "./.m2/repository"}' -T:build uber
 
 COPY plurama/config.prod.edn ./plurama/config.edn
+COPY plurama/mail.yaml ./plurama/mail.yaml
 
 FROM eclipse-temurin:21-jre AS runtime
 
@@ -46,6 +47,7 @@ WORKDIR /app
 
 COPY --from=builder /opt/plurama/target/plurama-0.0.1-standalone.jar /app/app.jar
 COPY --from=builder /opt/plurama/config.edn /app/config.edn
+COPY --from=builder /opt/plurama/mail.yaml /app/mail.yaml
 
 EXPOSE 8080
 

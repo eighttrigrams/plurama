@@ -48,6 +48,10 @@
         _      (when (and (prod-mode?)
                           (get-in config [:apps :tracker :workers?]))
                  (tracker/start-workers!))
+        _      (when (and (prod-mode?)
+                          (get-in config [:apps :plurama :mail :enabled?]))
+                 (plurama-app/start-mail-poller!
+                   (get-in config [:apps :plurama])))
         host->handler (into {} (for [[host k] (:hosts config)]
                                  [(str/lower-case host) (get apps k)]))
         fallback (get apps (:default config))

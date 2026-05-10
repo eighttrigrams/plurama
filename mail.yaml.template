@@ -1,0 +1,7 @@
+user-configs:
+  - user: <plurama-user-name>
+    inboxes:
+      - name: you@example.com
+        host: imap.example.com
+        user: <imap-username>
+        password: <imap-password>

@@ -15,6 +15,10 @@
                        :path "/app/data/plurama.db"}
                   :agent {:tracker {:base-url "https://tracker-ibh-lq.fly.dev"
                                     :skill   "agent/tracker-api-skill.md"}}
+                  :mail {:enabled? true
+                         :config-path "/app/mail.yaml"
+                         :poll {:every-minutes 5 :start-minute 1}
+                         :tracker-base-url "https://tracker-ibh-lq.fly.dev"}
                   :logging {:level :info}}
 
         :personalist {:db {:type :sqlite-on-disk

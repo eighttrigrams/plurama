@@ -13,7 +13,14 @@
  :apps {:plurama {:db {:type :sqlite-on-disk
                        :path "data/plurama.db"}
                   :agent {:tracker {:base-url "http://127.0.0.1:3027"
-                                    :skill   "agent/tracker-api-skill.md"}}}
+                                    :skill   "agent/tracker-api-skill.md"}}
+                  ;; :mail only runs in prod-mode (see plurama.server). Set
+                  ;; :enabled? true in config.prod.edn; mail.yaml holds the
+                  ;; per-user IMAP credentials and is gitignored.
+                  :mail {:enabled? false
+                         :config-path "mail.yaml"
+                         :poll {:every-minutes 5 :start-minute 1}
+                         :tracker-base-url "http://127.0.0.1:3027"}}
 
         :personalist {:db {:type :sqlite-on-disk
                            :path "../personalist/data/personalist.db"}
