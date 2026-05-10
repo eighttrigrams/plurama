@@ -13,3 +13,4 @@ logs
 data
 backups
 anthropic_api_key
+.build

@@ -16,13 +16,15 @@ test:
 	$(MAKE) -C ../tracker e2e-docker
 
 backup:
-	@mkdir -p backups
-	@OUT="backups/plurama-data.$$(date +%Y-%m-%d.%H-%M).tar.gz" && \
+	@mkdir -p ../backups
+	@OUT="../backups/plurama-data.$$(date +%Y-%m-%d.%H-%M).tar.gz" && \
 		echo "Backing up /app/data from fly machine to $$OUT ..." && \
 		fly ssh console --app plurama -C "tar -czf - -C / app/data" > "$$OUT" && \
 		echo "Wrote $$OUT ($$(du -h "$$OUT" | cut -f1))"
 
 deploy: test backup
+	@mkdir -p .build
+	@cp ../claude-stuff/plugins/tracker/skills/tracker-api/SKILL.md .build/tracker-api.md
 	cd .. && fly deploy --config plurama/fly.toml --dockerfile plurama/Dockerfile
 
 backup-replay-blog:
@@ -30,8 +32,8 @@ backup-replay-blog:
 		echo "Error: ../blog/data already exists. Remove it first."; \
 		exit 1; \
 	fi
-	@LATEST=$$(ls -t backups/plurama-data.*.tar.gz 2>/dev/null | head -1); \
-	if [ -z "$$LATEST" ]; then echo "Error: no backup found in backups/. Run 'make backup' first."; exit 1; fi; \
+	@LATEST=$$(ls -t ../backups/plurama-data.*.tar.gz 2>/dev/null | head -1); \
+	if [ -z "$$LATEST" ]; then echo "Error: no backup found in ../backups/. Run 'make backup' first."; exit 1; fi; \
 	echo "Replaying blog.db from $$LATEST to ../blog/data/ ..."; \
 	tar -xzf "$$LATEST" -C ../blog --strip-components=1 app/data/blog.db && \
 	echo "Done."
@@ -41,8 +43,8 @@ backup-replay-personalist:
 		echo "Error: ../personalist/data already exists. Remove it first."; \
 		exit 1; \
 	fi
-	@LATEST=$$(ls -t backups/plurama-data.*.tar.gz 2>/dev/null | head -1); \
-	if [ -z "$$LATEST" ]; then echo "Error: no backup found in backups/. Run 'make backup' first."; exit 1; fi; \
+	@LATEST=$$(ls -t ../backups/plurama-data.*.tar.gz 2>/dev/null | head -1); \
+	if [ -z "$$LATEST" ]; then echo "Error: no backup found in ../backups/. Run 'make backup' first."; exit 1; fi; \
 	echo "Replaying personalist.db from $$LATEST to ../personalist/data/ ..."; \
 	tar -xzf "$$LATEST" -C ../personalist --strip-components=1 app/data/personalist.db && \
 	echo "Done."
@@ -52,8 +54,8 @@ backup-replay-tracker:
 		echo "Error: ../tracker/data already exists. Remove it first."; \
 		exit 1; \
 	fi
-	@LATEST=$$(ls -t backups/plurama-data.*.tar.gz 2>/dev/null | head -1); \
-	if [ -z "$$LATEST" ]; then echo "Error: no backup found in backups/. Run 'make backup' first."; exit 1; fi; \
+	@LATEST=$$(ls -t ../backups/plurama-data.*.tar.gz 2>/dev/null | head -1); \
+	if [ -z "$$LATEST" ]; then echo "Error: no backup found in ../backups/. Run 'make backup' first."; exit 1; fi; \
 	echo "Replaying tracker.db from $$LATEST to ../tracker/data/ ..."; \
 	tar -xzf "$$LATEST" -C ../tracker --strip-components=1 app/data/tracker.db && \
 	echo "Done."
