@@ -1,5 +1,6 @@
 (ns plurama.app.mail.imap
-  (:import [javax.mail Session Folder Store Multipart Part Message Flags$Flag]
+  (:import [com.sun.mail.imap IMAPMessage]
+           [javax.mail Session Folder Store Multipart Part Message Flags$Flag]
            [javax.mail.search FlagTerm]))
 
 (defn- extract-text [^Part part]
@@ -32,6 +33,8 @@
   (let [unseen (FlagTerm. (javax.mail.Flags. Flags$Flag/SEEN) false)
         messages (.search folder unseen)]
     (mapv (fn [msg]
+            (when (instance? IMAPMessage msg)
+              (.setPeek ^IMAPMessage msg true))
             {:message-id (.getMessageID msg)
              :subject (.getSubject msg)
              :from (some-> (.getFrom msg) first str)
