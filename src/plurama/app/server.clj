@@ -12,8 +12,11 @@
 
 (defn- load-resource [path]
   (when path
-    (when-let [r (io/resource path)]
-      (slurp r))))
+    (let [f (io/file path)]
+      (if (.exists f)
+        (slurp f)
+        (when-let [r (io/resource path)]
+          (slurp r))))))
 
 (defn- collect-app-skills
   "For each configured agent app, slurp the :skill resource (if any)

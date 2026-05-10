@@ -14,7 +14,7 @@
  :apps {:plurama {:db {:type :sqlite-on-disk
                        :path "/app/data/plurama.db"}
                   :agent {:tracker {:base-url "https://tracker.eighttrigrams.net"
-                                    :skill   "agent/tracker-api-skill.md"}}
+                                    :skill   "/app/skills/tracker-api.md"}}
                   :mail {:enabled? true
                          :config-path "/app/mail.yaml"
                          :poll {:every-minutes 5 :start-minute 1}
