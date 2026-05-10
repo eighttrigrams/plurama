@@ -95,7 +95,7 @@ th,td{text-align:left;padding:.5em;border-bottom:1px solid #eee}
            [:button.danger {:type "submit"} "Delete"]]])]
       [:p.muted "No users yet."])))
 
-(defn user-page [{:keys [user credentials telegram-link admin? error]}]
+(defn user-page [{:keys [user credentials telegram-link agent-apps admin? error]}]
   (layout {:title (str (:name user) " — plurama")
            :logged-in? true
            :admin? admin?}
@@ -142,11 +142,20 @@ th,td{text-align:left;padding:.5em;border-bottom:1px solid #eee}
 
     [:h2 "Linked apps"]
     [:p.muted "Per-app credentials the bot uses to act on your behalf."]
-    [:form.row {:method "post" :action (str "/admin/users/" (:id user) "/credentials")}
-     [:input {:type "text" :name "app" :placeholder "app (e.g. tracker)" :required true}]
-     [:input {:type "text" :name "username" :placeholder "username" :required true}]
-     [:input {:type "text" :name "password" :placeholder "password" :required true}]
-     [:button {:type "submit"} "Add credential"]]
+    (let [taken     (set (map :app credentials))
+          available (->> (keys agent-apps)
+                         (map name)
+                         sort
+                         (remove taken))]
+      (if (seq available)
+        [:form.row {:method "post" :action (str "/admin/users/" (:id user) "/credentials")}
+         [:select {:name "app" :required true}
+          (for [a available]
+            [:option {:value a} a])]
+         [:input {:type "text" :name "username" :placeholder "username" :required true}]
+         [:input {:type "text" :name "password" :placeholder "password" :required true}]
+         [:button {:type "submit"} "Add credential"]]
+        [:p.muted "All configured apps already have credentials."]))
     (if (seq credentials)
       [:table
        [:thead [:tr [:th "App"] [:th "Username"] [:th "Password"] [:th]]]

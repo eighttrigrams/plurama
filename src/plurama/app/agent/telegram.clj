@@ -43,9 +43,10 @@
           {:kind :note :forward (str/trim body)}))))
 
 (defn- forward-to-tracker!
-  "POST `text` as a fresh message into the user's tracker inbox using the
-  same machine-user credentials the AI agent would use. Returns the
-  HTTP response map."
+  "POST `text` as a fresh message into the user's tracker inbox.
+  `tracker-ctx` carries the tracker-direct credentials — a separate
+  tracker user (with message-only permissions) that the AI agent never
+  sees. Returns the HTTP response map."
   [tracker-ctx text]
   (app-client/request
     tracker-ctx "POST" "/api/messages"
@@ -96,19 +97,23 @@
   [{:keys [conn anthropic-key bot-token agent-apps system-prompt] :as agent-ctx}
    from-id chat-id text]
   (if-let [{:keys [user_id]} (db/lookup-telegram-user conn from-id)]
-    (let [app-ctxs (build-app-ctxs conn user_id agent-apps)
-          tracker-ctx (get app-ctxs "tracker")
-          shortcut (prefix-match text)]
+    ;; tracker-direct is the message-only tracker user used for the
+    ;; T/TT/N prefix shortcuts; it must not appear in the AI's tool
+    ;; surface, so we strip it from the map handed to ai/chat.
+    (let [app-ctxs    (build-app-ctxs conn user_id agent-apps)
+          direct-ctx  (get app-ctxs "tracker-direct")
+          ai-app-ctxs (dissoc app-ctxs "tracker-direct")
+          shortcut    (prefix-match text)]
       (cond
-        (and shortcut tracker-ctx)
-        (handle-prefix! agent-ctx chat-id tracker-ctx shortcut)
+        (and shortcut direct-ctx)
+        (handle-prefix! agent-ctx chat-id direct-ctx shortcut)
 
-        (and shortcut (not tracker-ctx))
+        (and shortcut (not direct-ctx))
         (send-telegram-message
           bot-token chat-id
-          "No tracker credentials configured for your account.")
+          "No tracker-direct credentials configured for your account.")
 
-        (seq app-ctxs)
+        (seq ai-app-ctxs)
         (let [on-tool-call (fn [tool-name input result]
                              (send-telegram-message
                                bot-token chat-id
@@ -118,7 +123,7 @@
                            {:conn conn
                             :user-id user_id
                             :anthropic-key anthropic-key
-                            :app-ctxs app-ctxs
+                            :app-ctxs ai-app-ctxs
                             :system-prompt system-prompt
                             :on-tool-call on-tool-call}
                            text)]

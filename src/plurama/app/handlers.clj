@@ -116,23 +116,24 @@
       (redirect "/admin/users"))))
 
 (defn- render-user-page
-  ([conn id req] (render-user-page conn id req nil))
-  ([conn id req error]
+  ([conn agent-apps id req] (render-user-page conn agent-apps id req nil))
+  ([conn agent-apps id req error]
    (let [user (users/get-user conn id)]
      (if user
        (html (if error 400 200)
              (views/user-page {:user user
                                :credentials (users/list-credentials conn id)
                                :telegram-link (users/get-telegram-link conn id)
+                               :agent-apps agent-apps
                                :admin? (auth/admin? req)
                                :error error}))
        (html 404 (str "<h1>Not found</h1>"))))))
 
-(defn user-show [conn]
+(defn user-show [conn agent-apps]
   (fn [req]
     (let [id (some-> (get-in req [:params :id]) Integer/parseInt)]
       (if id
-        (render-user-page conn id req)
+        (render-user-page conn agent-apps id req)
         (html 404 (str "<h1>Not found</h1>"))))))
 
 (defn password-update [conn]
@@ -143,23 +144,27 @@
         (users/set-password! conn user-id password))
       (redirect (str "/admin/users/" user-id)))))
 
-(defn cred-create [conn]
+(defn cred-create [conn agent-apps]
   (fn [req]
     (let [user-id (some-> (get-in req [:params :id]) Integer/parseInt)
           app      (some-> (get-in req [:form-params "app"]) str/trim not-empty)
           username (some-> (get-in req [:form-params "username"]) str/trim not-empty)
-          password (some-> (get-in req [:form-params "password"]) str/trim not-empty)]
+          password (some-> (get-in req [:form-params "password"]) str/trim not-empty)
+          known-apps (set (map name (keys agent-apps)))]
       (cond
         (not user-id) (redirect "/admin/users")
         (not (and app username password))
-        (render-user-page conn user-id req
+        (render-user-page conn agent-apps user-id req
                           "App, username and password are all required.")
+        (not (contains? known-apps app))
+        (render-user-page conn agent-apps user-id req
+                          (str "Unknown app: " app))
         :else
         (try
           (users/create-credential! conn user-id app username password)
           (redirect (str "/admin/users/" user-id))
           (catch Exception e
-            (render-user-page conn user-id req
+            (render-user-page conn agent-apps user-id req
                               (str "Could not save credential: " (.getMessage e)))))))))
 
 (defn cred-delete [conn]
@@ -169,7 +174,7 @@
       (when cred-id (users/delete-credential! conn cred-id))
       (redirect (str "/admin/users/" user-id)))))
 
-(defn telegram-update [conn]
+(defn telegram-update [conn agent-apps]
   (fn [req]
     (let [user-id (some-> (get-in req [:params :id]) Integer/parseInt)
           tid (some-> (get-in req [:form-params "telegram_user_id"])
@@ -181,7 +186,7 @@
       (cond
         (not user-id) (redirect "/admin/users")
         (nil? tid)
-        (render-user-page conn user-id req "Telegram user id is required.")
+        (render-user-page conn agent-apps user-id req "Telegram user id is required.")
         :else
         (try
           (users/set-telegram-link! conn user-id tid display)
@@ -191,7 +196,7 @@
                   friendly (if (and msg (re-find #"UNIQUE|PRIMARY KEY|constraint" msg))
                              (str "Telegram id " tid " is already linked to a different user.")
                              (str "Could not save Telegram link: " msg))]
-              (render-user-page conn user-id req friendly))))))))
+              (render-user-page conn agent-apps user-id req friendly))))))))
 
 (defn telegram-delete [conn]
   (fn [req]

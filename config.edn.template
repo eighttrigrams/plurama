@@ -12,8 +12,14 @@
 
  :apps {:plurama {:db {:type :sqlite-on-disk
                        :path "data/plurama.db"}
-                  :agent {:tracker {:base-url "http://127.0.0.1:3027"
-                                    :skill   "../claude-stuff/plugins/tracker/skills/tracker-api/SKILL.md"}}
+                  :agent {:tracker        {:base-url "http://127.0.0.1:3027"
+                                           :skill   "../claude-stuff/plugins/tracker/skills/tracker-api/SKILL.md"}
+                          ;; tracker-direct is a separate tracker user, used
+                          ;; for the T/TT/N Telegram prefix shortcuts that
+                          ;; bypass the AI agent. The tracker-side user only
+                          ;; needs message-write permissions. No :skill —
+                          ;; the AI agent should not see this app at all.
+                          :tracker-direct {:base-url "http://127.0.0.1:3027"}}
                   ;; :mail only runs in prod-mode (see plurama.server). Set
                   ;; :enabled? true in config.prod.edn; mail.yaml holds the
                   ;; per-user IMAP credentials and is gitignored.

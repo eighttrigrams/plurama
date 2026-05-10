@@ -43,17 +43,17 @@
         (POST "/users/:id/delete" []      (h/users-delete conn)))
       h/require-admin))
 
-(defn- self-routes [conn]
+(defn- self-routes [conn agent-apps]
   (-> (routes
-        (GET  "/users/:id"              [] (h/user-show       conn))
+        (GET  "/users/:id"              [] (h/user-show       conn agent-apps))
         (POST "/users/:id/password"     [] (h/password-update conn))
-        (POST "/users/:id/credentials"  [] (h/cred-create     conn))
+        (POST "/users/:id/credentials"  [] (h/cred-create     conn agent-apps))
         (POST "/users/:id/credentials/:cred-id/delete" [] (h/cred-delete conn))
-        (POST "/users/:id/telegram"        [] (h/telegram-update conn))
+        (POST "/users/:id/telegram"        [] (h/telegram-update conn agent-apps))
         (POST "/users/:id/telegram/delete" [] (h/telegram-delete conn)))
       h/require-self-or-admin))
 
-(defn- html-routes [conn umbrella]
+(defn- html-routes [conn umbrella agent-apps]
   (routes
     (GET  "/"       []      (h/landing {:umbrella umbrella}))
     (GET  "/login"  []      h/login-page)
@@ -66,7 +66,7 @@
       ;; to admin-routes. Reversing this order causes a redirect loop:
       ;; require-admin would bounce non-admins on /admin/users/<self>
       ;; to /me which redirects right back here.
-      (self-routes conn)
+      (self-routes conn agent-apps)
       (admin-routes conn))
     (route/not-found {:status 404
                       :headers {"Content-Type" "text/plain"}
@@ -84,7 +84,8 @@
   (let [parts (db/init-conn (:db config))
         agent-ctx (build-agent-ctx parts config)
         json-routes (json-routes agent-ctx)
-        html-routes (-> (html-routes parts umbrella) wrap-params)]
+        html-routes (-> (html-routes parts umbrella (:agent-apps agent-ctx))
+                        wrap-params)]
     (fn [req]
       (if (= "/webhook/telegram" (:uri req))
         (json-routes req)
