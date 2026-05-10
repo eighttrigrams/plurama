@@ -1,4 +1,4 @@
-.PHONY: start stop build deploy backup backup-replay-blog backup-replay-personalist backup-replay-tracker clean
+.PHONY: start stop build test deploy backup backup-replay-blog backup-replay-personalist backup-replay-tracker clean
 
 start:
 	@DEV=true clj -X:run
@@ -9,6 +9,12 @@ stop:
 build:
 	clj -T:build uber
 
+test:
+	$(MAKE) -C ../personalist test
+	$(MAKE) -C ../blog test
+	$(MAKE) -C ../tracker test
+	$(MAKE) -C ../tracker e2e-docker
+
 backup:
 	@mkdir -p backups
 	@OUT="backups/plurama-data.$$(date +%Y-%m-%d.%H-%M).tar.gz" && \
@@ -16,7 +22,7 @@ backup:
 		fly ssh console --app plurama -C "tar -czf - -C / app/data" > "$$OUT" && \
 		echo "Wrote $$OUT ($$(du -h "$$OUT" | cut -f1))"
 
-deploy: backup
+deploy: test backup
 	cd .. && fly deploy --config plurama/fly.toml --dockerfile plurama/Dockerfile
 
 backup-replay-blog:
