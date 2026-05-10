@@ -36,7 +36,9 @@
           (imap/archive! msg store archive-folder)
           (catch Exception e
             (println "  forward failed for" inbox-name "/" folder-name
-                     "-" (.getMessage e)))))
+                     "-" (.getName (class e)) ":" (.getMessage e)
+                     (when-let [d (ex-data e)] (str " data=" d)))
+            (.printStackTrace e))))
       (finally
         (imap/close-folder folder)))))
 
