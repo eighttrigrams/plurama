@@ -1,7 +1,9 @@
 (ns plurama.app.agent.telegram
   (:require [plurama.app.agent.ai :as ai]
+            [plurama.app.agent.app-client :as app-client]
             [plurama.app.agent.db :as db]
-            [clojure.data.json :as json])
+            [clojure.data.json :as json]
+            [clojure.string :as str])
   (:import [java.net URI]
            [java.net.http HttpClient HttpRequest HttpRequest$BodyPublishers HttpResponse$BodyHandlers]
            [java.time Duration]))
@@ -23,6 +25,54 @@
       (catch Exception e
         (println "Failed to send Telegram message:" (.getMessage e))))))
 
+(defn- prefix-match
+  "Inspect raw Telegram text and decide whether to bypass the AI agent.
+  Returns one of:
+    {:kind :task :forward text}     — `t<ws>` or `tt<ws>` (case-insensitive).
+                                       Forward verbatim so tracker recognises
+                                       its own prefix and creates the task.
+    {:kind :note :forward stripped} — `n<ws>` (case-insensitive). Strip the
+                                       prefix; tracker doesn't act on it, so
+                                       the rest lands as a plain inbox message.
+    nil                             — no prefix; the AI agent handles it."
+  [text]
+  (when (string? text)
+    (or (when (re-matches #"(?si)tt?\s+.+" text)
+          {:kind :task :forward text})
+        (when-let [[_ body] (re-matches #"(?si)n\s+(.+)" text)]
+          {:kind :note :forward (str/trim body)}))))
+
+(defn- forward-to-tracker!
+  "POST `text` as a fresh message into the user's tracker inbox using the
+  same machine-user credentials the AI agent would use. Returns the
+  HTTP response map."
+  [tracker-ctx text]
+  (app-client/request
+    tracker-ctx "POST" "/api/messages"
+    {:sender "Telegram"
+     :title text}))
+
+(defn- handle-prefix!
+  "Run the prefix shortcut against tracker and reply over Telegram.
+  `tracker-ctx` is the per-user {:base-url :username :password} map."
+  [{:keys [bot-token]} chat-id tracker-ctx {:keys [kind forward]}]
+  (try
+    (let [{:keys [status]} (forward-to-tracker! tracker-ctx forward)]
+      (if (<= 200 status 299)
+        (send-telegram-message
+          bot-token chat-id
+          (case kind
+            :task "Forwarded to tracker."
+            :note "Saved to inbox."))
+        (send-telegram-message
+          bot-token chat-id
+          (str "Tracker rejected the forward (" status ")."))))
+    (catch Exception e
+      (println "Failed to forward prefixed message to tracker:" (.getMessage e))
+      (send-telegram-message
+        bot-token chat-id
+        "Failed to reach tracker."))))
+
 (defn- build-app-ctxs
   "Intersect the configured agent apps with the user's per-app
   credentials. Returns a map app-name (string) → {:base-url :username
@@ -43,11 +93,22 @@
       agent-apps)))
 
 (defn- handle-update
-  [{:keys [conn anthropic-key bot-token agent-apps system-prompt]}
+  [{:keys [conn anthropic-key bot-token agent-apps system-prompt] :as agent-ctx}
    from-id chat-id text]
   (if-let [{:keys [user_id]} (db/lookup-telegram-user conn from-id)]
-    (let [app-ctxs (build-app-ctxs conn user_id agent-apps)]
-      (if (seq app-ctxs)
+    (let [app-ctxs (build-app-ctxs conn user_id agent-apps)
+          tracker-ctx (get app-ctxs "tracker")
+          shortcut (prefix-match text)]
+      (cond
+        (and shortcut tracker-ctx)
+        (handle-prefix! agent-ctx chat-id tracker-ctx shortcut)
+
+        (and shortcut (not tracker-ctx))
+        (send-telegram-message
+          bot-token chat-id
+          "No tracker credentials configured for your account.")
+
+        (seq app-ctxs)
         (let [on-tool-call (fn [tool-name input result]
                              (send-telegram-message
                                bot-token chat-id
@@ -62,6 +123,8 @@
                             :on-tool-call on-tool-call}
                            text)]
           (send-telegram-message bot-token chat-id reply-text))
+
+        :else
         (do (println "No usable app credentials for plurama user" user_id)
             (send-telegram-message
               bot-token chat-id
