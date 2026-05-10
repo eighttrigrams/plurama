@@ -261,12 +261,30 @@ curl -sf -X POST -H "Content-Type: application/json" \
 Required: `sender`, `title`. Optional: `description`, `type`
 (`text|markdown|html`), `scope` (`private|work`), `importance`, `urgency`.
 
+### Inbox vs Saved views
+
+Messages live in two views, switched with `view=inbox|saved` (default
+`inbox`):
+
+- **`view=inbox`** — active inbox (`done=0`). Messages still awaiting
+  triage.
+- **`view=saved`** — saved-for-later / archived (`done=1`). Messages the
+  user explicitly kept around after triage by toggling `done`. This is the
+  "Saved" tab in the UI; ask here when the user says "my saved items",
+  "saved for later", or "what did I save".
+
+`done` is the toggle that moves a message between the two views. To answer
+"what's in my saved view?" call `GET /api/messages?view=saved`. Do **not**
+report from `view=inbox` and call those rows "saved" — they are the
+opposite. Likewise, do not offer to "mark messages as done to save them"
+unless the user explicitly wants to move active inbox items into Saved.
+
 Other message endpoints (gated as usual):
 
 ```
-GET    /api/messages?sort=...&q=...&importance=...&context=...&urgency=...
+GET    /api/messages?view=inbox|saved&sort=...&q=...&importance=...&context=...&urgency=...
 DELETE /api/messages/archived         # purge all archived
-PUT    /api/messages/:id/done         {"done": bool}
+PUT    /api/messages/:id/done         {"done": bool}    # toggles inbox ↔ saved
 PUT    /api/messages/:id/annotation   {"annotation":"..."}
 PUT    /api/messages/:id/scope|importance|urgency
 POST   /api/messages/:id/convert-to-resource
