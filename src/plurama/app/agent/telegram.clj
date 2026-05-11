@@ -10,18 +10,39 @@
 
 (def ^:private client (HttpClient/newHttpClient))
 
+(defn- to-telegram-markdown
+  "Convert the AI's CommonMark-flavoured output into Telegram's legacy
+  `Markdown` parse_mode. The main mismatch is bold: AI emits `**x**`,
+  Telegram expects `*x*`."
+  [text]
+  (str/replace text #"\*\*([^*\n]+)\*\*" "*$1*"))
+
+(defn- post-send-message [bot-token payload]
+  (let [request (-> (HttpRequest/newBuilder)
+                    (.uri (URI/create (str "https://api.telegram.org/bot" bot-token "/sendMessage")))
+                    (.timeout (Duration/ofSeconds 30))
+                    (.header "Content-Type" "application/json")
+                    (.POST (HttpRequest$BodyPublishers/ofString (json/write-str payload)))
+                    (.build))
+        response (.send client request (HttpResponse$BodyHandlers/ofString))]
+    {:status (.statusCode response)
+     :body   (.body response)}))
+
 (defn- send-telegram-message [bot-token chat-id text]
   (when bot-token
     (try
       (println "Telegram out [" chat-id "]:" text)
-      (let [body {:chat_id chat-id :text text}
-            request (-> (HttpRequest/newBuilder)
-                        (.uri (URI/create (str "https://api.telegram.org/bot" bot-token "/sendMessage")))
-                        (.timeout (Duration/ofSeconds 30))
-                        (.header "Content-Type" "application/json")
-                        (.POST (HttpRequest$BodyPublishers/ofString (json/write-str body)))
-                        (.build))]
-        (.send client request (HttpResponse$BodyHandlers/ofString)))
+      (let [md-text (to-telegram-markdown text)
+            {:keys [status body]} (post-send-message
+                                    bot-token
+                                    {:chat_id chat-id
+                                     :text md-text
+                                     :parse_mode "Markdown"})]
+        (if (<= 200 status 299)
+          {:status status :body body}
+          (do (println "Telegram rejected Markdown send (" status "):" body
+                       "— retrying as plain text")
+              (post-send-message bot-token {:chat_id chat-id :text text}))))
       (catch Exception e
         (println "Failed to send Telegram message:" (.getMessage e))))))
 
@@ -114,18 +135,12 @@
           "No tracker-direct credentials configured for your account.")
 
         (seq ai-app-ctxs)
-        (let [on-tool-call (fn [tool-name input result]
-                             (send-telegram-message
-                               bot-token chat-id
-                               (str "[tool] " tool-name " " (json/write-str input)
-                                    " = " result)))
-              reply-text (ai/chat
+        (let [reply-text (ai/chat
                            {:conn conn
                             :user-id user_id
                             :anthropic-key anthropic-key
                             :app-ctxs ai-app-ctxs
-                            :system-prompt system-prompt
-                            :on-tool-call on-tool-call}
+                            :system-prompt system-prompt}
                            text)]
           (send-telegram-message bot-token chat-id reply-text))
 
