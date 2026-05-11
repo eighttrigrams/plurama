@@ -1,5 +1,5 @@
 (ns plurama.app.mail.imap
-  (:import [com.sun.mail.imap IMAPMessage]
+  (:import [com.sun.mail.imap IMAPFolder IMAPMessage]
            [javax.mail Session Folder Store Multipart Part Message Flags$Flag]
            [javax.mail.search FlagTerm]))
 
@@ -49,12 +49,28 @@
       (.create folder Folder/HOLDS_MESSAGES))
     folder))
 
+(defn- find-folder-by-attribute [^Store store attribute]
+  (let [default (.getDefaultFolder store)]
+    (->> (.list default "*")
+         (filter #(instance? IMAPFolder %))
+         (some (fn [^IMAPFolder f]
+                 (when (some #{attribute} (.getAttributes f))
+                   f))))))
+
+(defn find-archive-folder
+  "Returns the special-use \\Archive folder if the server advertises one,
+   else falls back to ensure-folder! with the given default name."
+  [store default-name]
+  (or (find-folder-by-attribute store "\\Archive")
+      (ensure-folder! store default-name)))
+
 (defn archive! [^Message msg ^Store store archive-folder-name]
   (let [source-folder (.getFolder msg)
-        dest-folder (ensure-folder! store archive-folder-name)]
+        dest-folder (find-archive-folder store archive-folder-name)]
     (when-not (.isOpen dest-folder)
       (.open dest-folder Folder/READ_WRITE))
     (try
+      (.setFlag msg Flags$Flag/SEEN true)
       (.copyMessages source-folder (into-array Message [msg]) dest-folder)
       (.setFlag msg Flags$Flag/DELETED true)
       (finally
