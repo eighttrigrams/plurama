@@ -126,6 +126,10 @@
           ai-app-ctxs (dissoc app-ctxs "tracker-direct")
           shortcut    (prefix-match text)]
       (cond
+        (= "/clear" (some-> text str/trim str/lower-case))
+        (do (db/clear-history! conn user_id)
+            (send-telegram-message bot-token chat-id "Conversation history cleared."))
+
         (and shortcut direct-ctx)
         (handle-prefix! agent-ctx chat-id direct-ctx shortcut)
 
@@ -135,14 +139,20 @@
           "No tracker-direct credentials configured for your account.")
 
         (seq ai-app-ctxs)
-        (let [reply-text (ai/chat
-                           {:conn conn
-                            :user-id user_id
-                            :anthropic-key anthropic-key
-                            :app-ctxs ai-app-ctxs
-                            :system-prompt system-prompt}
-                           text)]
-          (send-telegram-message bot-token chat-id reply-text))
+        (try
+          (let [reply-text (ai/chat
+                             {:conn conn
+                              :user-id user_id
+                              :anthropic-key anthropic-key
+                              :app-ctxs ai-app-ctxs
+                              :system-prompt system-prompt}
+                             text)]
+            (send-telegram-message bot-token chat-id reply-text))
+          (catch Exception e
+            (println "ai/chat failed:" (.getMessage e))
+            (send-telegram-message
+              bot-token chat-id
+              (str "Internal error: " (.getMessage e)))))
 
         :else
         (do (println "No usable app credentials for plurama user" user_id)

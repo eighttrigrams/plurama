@@ -46,8 +46,13 @@
                     (.header "anthropic-version" "2023-06-01")
                     (.POST (HttpRequest$BodyPublishers/ofString (json/write-str body)))
                     (.build))
-        response (.send client request (HttpResponse$BodyHandlers/ofString))]
-    (json/read-str (.body response) :key-fn keyword)))
+        response (.send client request (HttpResponse$BodyHandlers/ofString))
+        status (.statusCode response)
+        body-str (.body response)]
+    (when-not (<= 200 status 299)
+      (throw (ex-info (str "Anthropic API " status ": " body-str)
+                      {:status status :body body-str})))
+    (json/read-str body-str :key-fn keyword)))
 
 (defn- db-row->msg [{:keys [role content]}]
   {:role role

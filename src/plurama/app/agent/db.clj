@@ -77,6 +77,13 @@
                  :order-by [[:id :asc]]})
     opts))
 
+(defn clear-history!
+  "Delete every stored message for this user."
+  [conn user-id]
+  (jdbc/execute-one! conn
+    (sql/format {:delete-from :agent_messages
+                 :where [:= :user_id user-id]})))
+
 (defn prune-turns!
   "Delete all but the most recent `keep` turns for this user."
   [conn user-id keep]
