@@ -102,7 +102,19 @@
       (if (>= iter max-tool-iterations)
         (do (db/prune-turns! conn user-id context-turns)
             "(tool-use iteration limit reached)")
-        (let [response (post-messages anthropic-key
+        (let [_ (println "LLM request iter" iter
+                         "msg-shapes:"
+                         (mapv (fn [m]
+                                 {:role (:role m)
+                                  :content-type (cond
+                                                  (string? (:content m)) :string
+                                                  (vector? (:content m)) :vector
+                                                  (sequential? (:content m)) :seq
+                                                  :else (type (:content m)))
+                                  :block-types (when (sequential? (:content m))
+                                                 (mapv :type (:content m)))})
+                               msgs))
+              response (post-messages anthropic-key
                                       {:model model
                                        :max_tokens 1024
                                        :system system-prompt
