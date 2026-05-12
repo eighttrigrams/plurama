@@ -109,6 +109,10 @@
                                        :tools tool-specs
                                        :messages msgs})
               content (:content response)]
+          (println "LLM response iter" iter
+                   "stop_reason:" (:stop_reason response)
+                   "block-types:" (mapv :type content)
+                   "raw:" (json/write-str response))
           (db/add-message! conn user-id turn-id "assistant" (json/write-str content))
           (if (= "tool_use" (:stop_reason response))
             (let [result-blocks (mapv (partial run-tool-use app-ctxs on-tool-call)
@@ -120,4 +124,9 @@
                            tool-user-msg)
                      (inc iter)))
             (do (db/prune-turns! conn user-id context-turns)
-                (extract-text content))))))))
+                (let [text (extract-text content)]
+                  (println "LLM final reply length:" (count text))
+                  (if (str/blank? text)
+                    (str "(empty LLM reply, stop_reason="
+                         (:stop_reason response) ")")
+                    text)))))))))
