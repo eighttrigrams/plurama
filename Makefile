@@ -1,4 +1,4 @@
-.PHONY: start stop build test deploy backup backup-replay-blog backup-replay-personalist backup-replay-tracker clean
+.PHONY: start stop build test deploy preflight backup backup-replay-blog backup-replay-personalist backup-replay-tracker clean
 
 start:
 	@DEV=true clj -X:run
@@ -22,7 +22,22 @@ backup:
 		fly ssh console --app plurama -C "tar -czf - -C / app/data" > "$$OUT" && \
 		echo "Wrote $$OUT ($$(du -h "$$OUT" | cut -f1))"
 
-deploy: test backup
+preflight:
+	@set -e; \
+	for r in plurama blog tracker personalist; do \
+		dir=".."; if [ "$$r" = "plurama" ]; then dir="."; else dir="../$$r"; fi; \
+		echo "Preflight: $$r"; \
+		branch=$$(git -C "$$dir" rev-parse --abbrev-ref HEAD); \
+		if [ "$$branch" != "main" ]; then echo "  ✗ on branch '$$branch', not main"; exit 1; fi; \
+		if [ -n "$$(git -C "$$dir" status --porcelain)" ]; then echo "  ✗ working tree not clean"; exit 1; fi; \
+		git -C "$$dir" fetch --quiet origin main; \
+		local_sha=$$(git -C "$$dir" rev-parse @); \
+		remote_sha=$$(git -C "$$dir" rev-parse @{u}); \
+		if [ "$$local_sha" != "$$remote_sha" ]; then echo "  ✗ not in sync with origin/main"; exit 1; fi; \
+		echo "  ✓ main, clean, in sync"; \
+	done
+
+deploy: preflight test backup
 	@mkdir -p .build
 	@cp ../claude-stuff/plugins/tracker/skills/tracker-api/SKILL.md .build/tracker-api.md
 	cd .. && fly deploy --config plurama/fly.toml --dockerfile plurama/Dockerfile
