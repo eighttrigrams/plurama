@@ -1,0 +1,62 @@
+# Per-Dockerfile ignore for plurama/Dockerfile. BuildKit prefers this
+# file over the workspace-root .dockerignore (which is allowlist-style
+# and scoped to docker/Dockerfile's warmup). The build context for fly
+# deploy is the workspace root (see plurama/Makefile `make deploy`),
+# so paths are relative to there.
+#
+# Denylist style: assume the source trees we want are included by
+# default; exclude build artefacts, machine state, and the dev-only
+# subprojects that aren't part of the prod image.
+
+.git
+.gitignore
+
+# Build artefacts that get regenerated inside the builder stage.
+**/node_modules
+**/target
+**/.shadow-cljs
+**/.cpcache
+**/.cache
+
+# Generated and ephemeral state.
+**/logs
+**/test-results
+**/playwright-report
+**/.features-gen
+**/.playwright-mcp
+**/.nrepl-port
+**/.server.port
+**/.dev-server.lock
+**/.shadow-cljs.pid
+
+# Per-developer / local-only files.
+**/.envrc
+**/.env
+**/.editor-layouts.json
+**/.credentials
+**/.lsp
+**/.clj-kondo
+**/.claude
+**/.idea
+**/.vscode
+
+# Local databases and backups — not for the image.
+**/*.db
+**/*.db-journal
+**/*.db-shm
+**/*.db-wal
+**/data
+backups
+
+# User-local config (the prod image gets config.prod.edn renamed to
+# config.edn inside the builder stage).
+**/config.edn
+**/config.edn.*
+!plurama/config.prod.edn
+
+# Subprojects not consumed by the plurama image.
+docker
+rhizome
+claude-stuff
+automator
+plurama-remote-devel
