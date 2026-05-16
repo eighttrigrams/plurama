@@ -1,28 +1,25 @@
 {:server {:port 8080
           :host "0.0.0.0"}
 
- :default :plurama
+ ;; Plurama itself: top-level config for the always-on umbrella.
+ :db {:type :sqlite-on-disk
+      :path "/app/data/plurama.db"}
+ :agent {:tracker        {:base-url "https://tracker.eighttrigrams.net"
+                          :skill   "/app/skills/tracker-api.md"}
+         :tracker-direct {:base-url "https://tracker.eighttrigrams.net"}}
+ :mail {:enabled? true
+        :config-path "/app/mail.yaml"
+        :poll {:every-minutes 5 :start-minute 1}
+        :tracker-base-url "https://tracker.eighttrigrams.net"}
+ :logging {:level :info}
 
- :hosts {"plurama.fly.dev"            :plurama
-         "plurama.eighttrigrams.net"  :plurama
-         "personalist.org"            :personalist
+ :hosts {"personalist.org"            :personalist
          "www.personalist.org"        :personalist
          "eighttrigrams.net"          :blog
          "www.eighttrigrams.net"      :blog
          "tracker.eighttrigrams.net"  :tracker}
 
- :apps {:plurama {:db {:type :sqlite-on-disk
-                       :path "/app/data/plurama.db"}
-                  :agent {:tracker        {:base-url "https://tracker.eighttrigrams.net"
-                                           :skill   "/app/skills/tracker-api.md"}
-                          :tracker-direct {:base-url "https://tracker.eighttrigrams.net"}}
-                  :mail {:enabled? true
-                         :config-path "/app/mail.yaml"
-                         :poll {:every-minutes 5 :start-minute 1}
-                         :tracker-base-url "https://tracker.eighttrigrams.net"}
-                  :logging {:level :info}}
-
-        :personalist {:db {:type :sqlite-on-disk
+ :apps {:personalist {:db {:type :sqlite-on-disk
                            :path "/app/data/personalist.db"}
                       :logging {:level :info}}
 

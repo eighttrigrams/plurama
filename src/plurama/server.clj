@@ -36,25 +36,28 @@
 
 (defn -main [& _args]
   (let [config (load-config)
-        apps   {:personalist (personalist/build-handler
-                              (get-in config [:apps :personalist]))
-                :blog        (blog/build-handler
-                              (get-in config [:apps :blog]))
-                :tracker     (tracker/build-app
-                              (get-in config [:apps :tracker]))
-                :plurama     (plurama-app/build-handler
-                              (assoc (get-in config [:apps :plurama])
-                                     :umbrella config))}
+        ;; The plurama umbrella handler is always built — its db/agent/mail
+        ;; live at the top level of config. The embedded apps are optional,
+        ;; sourced from :apps.
+        plurama-handler (plurama-app/build-handler (assoc config :umbrella config))
+        apps   {:personalist (some-> (get-in config [:apps :personalist])
+                                     personalist/build-handler)
+                :blog        (some-> (get-in config [:apps :blog])
+                                     blog/build-handler)
+                :tracker     (some-> (get-in config [:apps :tracker])
+                                     tracker/build-app)}
         _      (when (and (prod-mode?)
                           (get-in config [:apps :tracker :workers?]))
                  (tracker/start-workers!))
         _      (when (and (prod-mode?)
-                          (get-in config [:apps :plurama :mail :enabled?]))
-                 (plurama-app/start-mail-poller!
-                   (get-in config [:apps :plurama])))
-        host->handler (into {} (for [[host k] (:hosts config)]
-                                 [(str/lower-case host) (get apps k)]))
-        fallback (get apps (:default config))
+                          (get-in config [:mail :enabled?]))
+                 (plurama-app/start-mail-poller! config))
+        host->handler (into {} (for [[host k] (:hosts config)
+                                     :let [h (get apps k)]
+                                     :when h]
+                                 [(str/lower-case host) h]))
+        ;; Unmatched hosts always fall through to plurama itself.
+        fallback plurama-handler
         port (get-in config [:server :port])
         host (or (System/getenv "HOST")
                  (get-in config [:server :host])
