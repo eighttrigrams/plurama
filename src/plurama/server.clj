@@ -1,5 +1,5 @@
 (ns plurama.server
-  (:require [clojure.edn :as edn]
+  (:require [aero.core :as aero]
             [clojure.java.io :as io]
             [clojure.string :as str]
             [ring.adapter.jetty9 :as jetty]
@@ -29,7 +29,7 @@
   (let [f (io/file "config.edn")]
     (when-not (.exists f)
       (throw (ex-info "config.edn required" {})))
-    (edn/read-string (slurp f))))
+    (aero/read-config f)))
 
 (defn- prod-mode? []
   (not= "true" (System/getenv "DEV")))
@@ -55,8 +55,7 @@
         host->handler (into {} (for [[host k] (:hosts config)]
                                  [(str/lower-case host) (get apps k)]))
         fallback (get apps (:default config))
-        port (or (some-> (System/getenv "PORT") Integer/parseInt)
-                 (get-in config [:server :port]))
+        port (get-in config [:server :port])
         host (or (System/getenv "HOST")
                  (get-in config [:server :host])
                  "127.0.0.1")]
