@@ -38,6 +38,7 @@ preflight:
 	done
 
 deploy: preflight test backup
+	@test -s mail.yaml || { echo "Missing or empty plurama/mail.yaml"; exit 1; }
 	@mkdir -p .build
 	@cp ../claude-stuff/plugins/tracker/skills/tracker-api/SKILL.md .build/tracker-api.md
 	cd .. && fly deploy --config plurama/fly.toml --dockerfile plurama/Dockerfile
