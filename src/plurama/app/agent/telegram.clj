@@ -52,40 +52,49 @@
     {:kind :task :forward text}     — `t<ws>` or `tt<ws>` (case-insensitive).
                                        Forward verbatim so tracker recognises
                                        its own prefix and creates the task.
-    {:kind :note :forward stripped} — `n<ws>` (case-insensitive). Strip the
-                                       prefix; tracker doesn't act on it, so
-                                       the rest lands as a plain inbox message.
+    {:kind :note :forward stripped} — `n<ws>`, `np<ws>` or `nw<ws>`
+                                       (case-insensitive). Strip the prefix; the
+                                       rest lands as a plain inbox message. `np`
+                                       scopes it private, `nw` work, plain `n`
+                                       leaves it unscoped.
     nil                             — no prefix; the AI agent handles it."
   [text]
   (when (string? text)
     (or (when (re-matches #"(?si)tt?\s+.+" text)
           {:kind :task :forward text})
-        (when-let [[_ body] (re-matches #"(?si)n\s+(.+)" text)]
-          {:kind :note :forward (str/trim body)}))))
+        (when-let [[_ scope-char body] (re-matches #"(?si)n([pw]?)\s+(.+)" text)]
+          {:kind :note
+           :scope (case (str/lower-case scope-char) "p" "private" "w" "work" nil)
+           :forward (str/trim body)}))))
 
 (defn- forward-to-tracker!
   "POST `text` as a fresh message into the user's tracker inbox.
   `tracker-ctx` carries the tracker-direct credentials — a separate
   tracker user (with message-only permissions) that the AI agent never
   sees. Returns the HTTP response map."
-  [tracker-ctx text]
-  (app-client/request
-    tracker-ctx "POST" "/api/messages"
-    {:sender "Telegram"
-     :title text}))
+  ([tracker-ctx text] (forward-to-tracker! tracker-ctx text nil))
+  ([tracker-ctx text scope]
+   (app-client/request
+     tracker-ctx "POST" "/api/messages"
+     (cond-> {:sender "Telegram"
+              :title text}
+       (#{"private" "work"} scope) (assoc :scope scope)))))
 
 (defn- handle-prefix!
   "Run the prefix shortcut against tracker and reply over Telegram.
   `tracker-ctx` is the per-user {:base-url :username :password} map."
-  [{:keys [bot-token]} chat-id tracker-ctx {:keys [kind forward]}]
+  [{:keys [bot-token]} chat-id tracker-ctx {:keys [kind forward scope]}]
   (try
-    (let [{:keys [status]} (forward-to-tracker! tracker-ctx forward)]
+    (let [{:keys [status]} (forward-to-tracker! tracker-ctx forward scope)]
       (if (<= 200 status 299)
         (send-telegram-message
           bot-token chat-id
           (case kind
             :task "Forwarded to tracker."
-            :note "Saved to inbox."))
+            :note (case scope
+                    "private" "Saved to inbox (private)."
+                    "work" "Saved to inbox (work)."
+                    "Saved to inbox.")))
         (send-telegram-message
           bot-token chat-id
           (str "Tracker rejected the forward (" status ")."))))
