@@ -26,11 +26,18 @@
        "to add/update entries, use the tool — do not make up data."))
 
 (defn- now-context []
-  (str "## Current date and time\n"
-       (.format (ZonedDateTime/now)
-                (DateTimeFormatter/ofPattern "EEEE, yyyy-MM-dd HH:mm zzz"))
-       "\nTreat this as \"now\" for any time-relative question (today, "
-       "overdue, due soon, the next N hours, this week)."))
+  (let [now (ZonedDateTime/now)
+        cal-fmt (DateTimeFormatter/ofPattern "EEEE yyyy-MM-dd")
+        calendar (->> (range 0 8)
+                      (map (fn [d] (str "  " (.format (.plusDays now d) cal-fmt))))
+                      (str/join "\n"))]
+    (str "## Current date and time\n"
+         (.format now (DateTimeFormatter/ofPattern "EEEE, yyyy-MM-dd HH:mm zzz"))
+         "\nTreat this as \"now\" for any time-relative question (today, "
+         "overdue, due soon, the next N hours, this week).\n"
+         "Resolve weekday names against this calendar — do not compute dates "
+         "yourself:\n"
+         calendar)))
 
 (defn build-system-prompt
   "Concatenate the base system prompt with one section per available app.
