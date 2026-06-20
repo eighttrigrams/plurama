@@ -10,7 +10,8 @@
             [clojure.string :as str])
   (:import [java.net URI]
            [java.net.http HttpClient HttpRequest HttpRequest$BodyPublishers HttpResponse$BodyHandlers]
-           [java.time Duration]))
+           [java.time Duration ZonedDateTime]
+           [java.time.format DateTimeFormatter]))
 
 (def ^:private client (HttpClient/newHttpClient))
 (def ^:private model "claude-haiku-4-5-20251001")
@@ -23,6 +24,13 @@
        "configured apps. Pick the right `app` for each request based on the per-app "
        "guidance below. When the user asks about their tasks, today board, or wants "
        "to add/update entries, use the tool — do not make up data."))
+
+(defn- now-context []
+  (str "## Current date and time\n"
+       (.format (ZonedDateTime/now)
+                (DateTimeFormatter/ofPattern "EEEE, yyyy-MM-dd HH:mm zzz"))
+       "\nTreat this as \"now\" for any time-relative question (today, "
+       "overdue, due soon, the next N hours, this week)."))
 
 (defn build-system-prompt
   "Concatenate the base system prompt with one section per available app.
@@ -100,7 +108,8 @@
   (let [tool-specs (tools/build-tool-specs (sort (keys app-ctxs)))
         turn-id (db/next-turn-id conn user-id)
         history (mapv db-row->msg (db/recent-messages conn user-id context-turns))
-        user-msg {:role "user" :content user-text}]
+        user-msg {:role "user" :content user-text}
+        system (str system-prompt "\n\n" (now-context))]
     (db/add-message! conn user-id turn-id "user" (json/write-str user-text))
     (loop [msgs (conj history user-msg)
            iter 0]
@@ -122,7 +131,7 @@
               response (post-messages anthropic-key
                                       {:model model
                                        :max_tokens 1024
-                                       :system system-prompt
+                                       :system system
                                        :tools tool-specs
                                        :messages msgs})
               content (:content response)]
