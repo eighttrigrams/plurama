@@ -17,7 +17,8 @@
          "www.personalist.org"        :personalist
          "eighttrigrams.net"          :blog
          "www.eighttrigrams.net"      :blog
-         "tracker.eighttrigrams.net"  :tracker}
+         "tracker.eighttrigrams.net"  :tracker
+         "treina.eighttrigrams.net"   :treina}
 
  :apps {:personalist {:db {:type :sqlite-on-disk
                            :path "/app/data/personalist.db"}
@@ -29,4 +30,7 @@
 
         :tracker {:db {:type :sqlite-file
                        :path "/app/data/tracker.db"}
-                  :workers? true}}}
+                  :workers? true}
+
+        :treina {:db {:type :sqlite-file
+                      :path "/app/data/treina.db"}}}}

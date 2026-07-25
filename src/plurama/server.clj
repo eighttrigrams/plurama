@@ -7,6 +7,7 @@
             [et.pe.server :as personalist]
             [et.blog.server :as blog]
             [et.tr.server :as tracker]
+            [et.trn.server :as treina]
             [plurama.app.server :as plurama-app])
   (:gen-class))
 
@@ -45,7 +46,9 @@
                 :blog        (some-> (get-in config [:apps :blog])
                                      blog/build-handler)
                 :tracker     (some-> (get-in config [:apps :tracker])
-                                     tracker/build-app)}
+                                     tracker/build-app)
+                :treina      (some-> (get-in config [:apps :treina])
+                                     treina/build-app)}
         _      (when (and (prod-mode?)
                           (get-in config [:apps :tracker :workers?]))
                  (tracker/start-workers!))
