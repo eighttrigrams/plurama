@@ -31,6 +31,17 @@ COPY tracker/resources       ./tracker/resources
 
 RUN cd tracker && npx shadow-cljs release app
 
+COPY treina/package.json treina/package-lock.json ./treina/
+RUN cd treina && npm install
+
+COPY treina/shadow-cljs.edn ./treina/
+COPY treina/deps.edn        ./treina/
+COPY treina/build.clj       ./treina/
+COPY treina/src             ./treina/src
+COPY treina/resources       ./treina/resources
+
+RUN cd treina && npx shadow-cljs release app
+
 COPY plurama/deps.edn  ./plurama/
 COPY plurama/build.clj ./plurama/
 COPY plurama/src       ./plurama/src
