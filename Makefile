@@ -1,4 +1,4 @@
-.PHONY: start stop build test deploy preflight backup backup-replay-blog backup-replay-personalist backup-replay-tracker clean
+.PHONY: start stop build test deploy preflight check-context backup backup-replay-blog backup-replay-personalist backup-replay-tracker clean
 
 start:
 	@DEV=true clj -X:run
@@ -24,7 +24,33 @@ backup:
 		fly ssh console --app plurama -C "tar -czf - -C / app/data" > "$$OUT" && \
 		echo "Wrote $$OUT ($$(du -h "$$OUT" | cut -f1))"
 
-preflight:
+# The build context is the workspace root (see the `fly deploy` line below), so
+# it is ../.dockerignore that decides what gets uploaded — not .gitignore, and
+# not the .dockerignore files inside the app dirs. That file is an allowlist, so
+# a new app must be added to it as well as to the Dockerfile. Catch the mismatch
+# here rather than ten minutes into a build.
+check-context:
+	@set -e; \
+	test -f ../.dockerignore || { \
+		echo "  ✗ ../.dockerignore is missing — the whole workspace would be uploaded"; exit 1; }; \
+	missing=""; \
+	for d in $$(grep -E '^COPY ' Dockerfile | grep -v -- '--from=' \
+	            | awk '{print $$2}' | cut -d/ -f1 | sort -u); do \
+		grep -qx "!$$d" ../.dockerignore || missing="$$missing $$d"; \
+	done; \
+	if [ -n "$$missing" ]; then \
+		echo "  ✗ the Dockerfile COPYs these, but ../.dockerignore does not allowlist them:$$missing"; \
+		echo "    add a '!<dir>' line for each — without it the build fails with"; \
+		echo "    'Local lib eighttrigrams/<name> not found: /opt/<name>'"; \
+		exit 1; \
+	fi; \
+	for d in $$(grep -E '^!' ../.dockerignore | sed 's/^!//'); do \
+		grep -qE "^COPY $$d/" Dockerfile || \
+			echo "  ! ../.dockerignore allowlists '$$d' but the Dockerfile never COPYs it (dead upload cost)"; \
+	done; \
+	echo "  ✓ .dockerignore allowlists every app the Dockerfile COPYs"
+
+preflight: check-context
 	@set -e; \
 	for r in plurama blog tracker personalist treina music; do \
 		dir=".."; if [ "$$r" = "plurama" ]; then dir="."; else dir="../$$r"; fi; \
