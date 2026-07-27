@@ -14,6 +14,7 @@ test:
 	$(MAKE) -C ../blog test
 	$(MAKE) -C ../tracker test
 	$(MAKE) -C ../treina test
+	$(MAKE) -C ../music test
 	$(MAKE) -C ../tracker e2e-docker
 
 backup:
@@ -25,7 +26,7 @@ backup:
 
 preflight:
 	@set -e; \
-	for r in plurama blog tracker personalist treina; do \
+	for r in plurama blog tracker personalist treina music; do \
 		dir=".."; if [ "$$r" = "plurama" ]; then dir="."; else dir="../$$r"; fi; \
 		echo "Preflight: $$r"; \
 		branch=$$(git -C "$$dir" rev-parse --abbrev-ref HEAD); \

@@ -42,6 +42,17 @@ COPY treina/resources       ./treina/resources
 
 RUN cd treina && npx shadow-cljs release app
 
+COPY music/package.json music/package-lock.json ./music/
+RUN cd music && npm install
+
+COPY music/shadow-cljs.edn ./music/
+COPY music/deps.edn        ./music/
+COPY music/build.clj       ./music/
+COPY music/src             ./music/src
+COPY music/resources       ./music/resources
+
+RUN cd music && npx shadow-cljs release app
+
 COPY plurama/deps.edn  ./plurama/
 COPY plurama/build.clj ./plurama/
 COPY plurama/src       ./plurama/src

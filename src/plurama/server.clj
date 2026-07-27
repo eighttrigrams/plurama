@@ -8,6 +8,7 @@
             [et.blog.server :as blog]
             [et.tr.server :as tracker]
             [et.trn.server :as treina]
+            [et.mu.server :as music]
             [plurama.app.server :as plurama-app])
   (:gen-class))
 
@@ -48,7 +49,9 @@
                 :tracker     (some-> (get-in config [:apps :tracker])
                                      tracker/build-app)
                 :treina      (some-> (get-in config [:apps :treina])
-                                     treina/build-app)}
+                                     treina/build-app)
+                :music       (some-> (get-in config [:apps :music])
+                                     music/build-app)}
         _      (when (and (prod-mode?)
                           (get-in config [:apps :tracker :workers?]))
                  (tracker/start-workers!))

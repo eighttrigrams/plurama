@@ -17,7 +17,8 @@
         eighttrigrams/personalist        {:local/root "../personalist"}
         eighttrigrams/blog               {:local/root "../blog"}
         eighttrigrams/tracker            {:local/root "../tracker"}
-        eighttrigrams/treina             {:local/root "../treina"}}
+        eighttrigrams/treina             {:local/root "../treina"}
+        eighttrigrams/music              {:local/root "../music"}}
  :aliases {:run {:exec-fn plurama.server/-main}
            :build {:deps {io.github.clojure/tools.build {:git/tag "v0.10.14" :git/sha "1176afd38dc39cb1880bd990d85718d4a61e194d"}}
                    :ns-default build}}}
