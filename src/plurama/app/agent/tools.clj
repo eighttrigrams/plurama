@@ -11,8 +11,8 @@
     :description (str "Make an authenticated HTTP request to one of the configured "
                       "apps' /api/* surfaces. Use the `app` parameter to pick which "
                       "downstream app to call. Returns the raw HTTP status and "
-                      "response body. Consult the per-app guidance in the system "
-                      "prompt for available endpoints and request shapes.")
+                      "response body. Call GET /api/describe on an app for its "
+                      "available endpoints, request shapes, and usage guidance.")
     :input_schema {:type "object"
                    :properties {:app    {:type "string"
                                          :enum (vec app-names)

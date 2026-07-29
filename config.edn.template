@@ -6,8 +6,7 @@
  ;; which is reserved for the embedded child apps).
  :db {:type :sqlite-on-disk
       :path "data/plurama.db"}
- :agent {:tracker        {:base-url "http://127.0.0.1:3027"
-                          :skill   "../claude-stuff/plugins/tracker/skills/tracker-api/SKILL.md"}
+ :agent {:tracker        {:base-url "http://127.0.0.1:3027"}
          ;; tracker-direct is a separate tracker user, used for the
          ;; T/TT/N Telegram prefix shortcuts that bypass the AI agent.
          ;; The tracker-side user only needs message-write permissions.

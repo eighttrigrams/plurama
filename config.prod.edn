@@ -4,8 +4,7 @@
  ;; Plurama itself: top-level config for the always-on umbrella.
  :db {:type :sqlite-on-disk
       :path "/app/data/plurama.db"}
- :agent {:tracker        {:base-url "https://tracker.eighttrigrams.net"
-                          :skill   "/app/skills/tracker-api.md"}
+ :agent {:tracker        {:base-url "https://tracker.eighttrigrams.net"}
          :tracker-direct {:base-url "https://tracker.eighttrigrams.net"}}
  :mail {:enabled? true
         :config-path "/app/mail.yaml"

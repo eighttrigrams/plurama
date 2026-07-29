@@ -23,7 +23,11 @@
        "You can use the app_request tool to read and write data on any of the user's "
        "configured apps. Pick the right `app` for each request based on the per-app "
        "guidance below. When the user asks about their tasks, today board, or wants "
-       "to add/update entries, use the tool — do not make up data."))
+       "to add/update entries, use the tool — do not make up data.\n\n"
+       "Each app describes itself: GET /api/describe returns `endpoints` (every "
+       "route with its method, path, params and body fields) and `skill` (how to "
+       "use that app effectively). Call it before guessing an endpoint, and follow "
+       "the `skill` guidance it returns."))
 
 (defn- now-context []
   (let [now (ZonedDateTime/now)
@@ -39,18 +43,10 @@
          "yourself:\n"
          calendar)))
 
-(defn build-system-prompt
-  "Concatenate the base system prompt with one section per available app.
-  `app-skills` is a vector of {:app :skill-md} maps; `:skill-md` may be
-  nil (the heading is shown but no body, in case the skill resource is
-  missing)."
-  [app-skills]
-  (let [parts (cons base-system
-                    (for [{:keys [app skill-md]} app-skills
-                          :let [trimmed (when skill-md (str/trim skill-md))]
-                          :when (seq trimmed)]
-                      (str "## App: " app "\n\n" trimmed)))]
-    (str/join "\n\n" parts)))
+(def system-prompt
+  "The agent's standing instructions. Per-app guidance is not baked in here —
+  each app serves its own under the `skill` key of GET /api/describe."
+  base-system)
 
 (defn- post-messages [api-key body]
   (let [request (-> (HttpRequest/newBuilder)

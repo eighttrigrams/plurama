@@ -3,38 +3,19 @@
             [compojure.route :as route]
             [ring.middleware.params :refer [wrap-params]]
             [ring.middleware.json :refer [wrap-json-body wrap-json-response]]
-            [clojure.java.io :as io]
             [plurama.app.db :as db]
             [plurama.app.handlers :as h]
             [plurama.app.agent.ai :as agent.ai]
             [plurama.app.agent.telegram :as agent.telegram]
             [plurama.app.mail.poller :as mail.poller]))
 
-(defn- load-resource [path]
-  (when path
-    (let [f (io/file path)]
-      (if (.exists f)
-        (slurp f)
-        (when-let [r (io/resource path)]
-          (slurp r))))))
-
-(defn- collect-app-skills
-  "For each configured agent app, slurp the :skill resource (if any)
-  and return a vector of {:app :skill-md} pairs in deterministic order."
-  [agent-apps]
-  (vec (for [[app-key {:keys [skill]}] (sort-by (comp name first) agent-apps)]
-         {:app (name app-key)
-          :skill-md (load-resource skill)})))
-
 (defn- build-agent-ctx [{:keys [conn]} {:keys [agent]}]
-  (let [agent-apps (or agent {})
-        app-skills (collect-app-skills agent-apps)]
-    {:conn conn
-     :webhook-secret  (System/getenv "TELEGRAM_WEBHOOK_SECRET")
-     :anthropic-key   (System/getenv "ANTHROPIC_API_KEY")
-     :bot-token       (System/getenv "TELEGRAM_BOT_TOKEN")
-     :agent-apps      agent-apps
-     :system-prompt   (agent.ai/build-system-prompt app-skills)}))
+  {:conn conn
+   :webhook-secret  (System/getenv "TELEGRAM_WEBHOOK_SECRET")
+   :anthropic-key   (System/getenv "ANTHROPIC_API_KEY")
+   :bot-token       (System/getenv "TELEGRAM_BOT_TOKEN")
+   :agent-apps      (or agent {})
+   :system-prompt   agent.ai/system-prompt})
 
 (defn- admin-routes [conn]
   (-> (routes

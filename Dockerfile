@@ -70,7 +70,6 @@ WORKDIR /app
 COPY --from=builder /opt/plurama/target/plurama-0.0.1-standalone.jar /app/app.jar
 COPY --from=builder /opt/plurama/config.edn /app/config.edn
 COPY --from=builder /opt/plurama/mail.yaml /app/mail.yaml
-COPY plurama/.build/tracker-api.md /app/skills/tracker-api.md
 
 EXPOSE 8080
 

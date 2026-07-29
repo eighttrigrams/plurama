@@ -180,7 +180,7 @@
     :anthropic-key  Anthropic API key
     :bot-token      Telegram bot token (for outbound replies)
     :agent-apps     map app-key → {:base-url ...} of configured apps
-    :system-prompt  precomputed system prompt incl. all app skills
+    :system-prompt  the agent's standing instructions
 
   Behaviour:
    - 503 if no webhook-secret configured
