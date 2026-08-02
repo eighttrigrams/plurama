@@ -4,7 +4,9 @@
  ;; Plurama itself: top-level config for the always-on umbrella.
  :db {:type :sqlite-on-disk
       :path "/app/data/plurama.db"}
- :agent {:tracker        {:base-url "https://tracker.eighttrigrams.net"}
+ ;; :ai-visible? true is what puts an app in the model's tool surface. Omitting
+ ;; it leaves the app reachable by the Telegram prefix shortcuts only.
+ :agent {:tracker        {:base-url "https://tracker.eighttrigrams.net" :ai-visible? true}
          :tracker-direct {:base-url "https://tracker.eighttrigrams.net"}}
  :mail {:enabled? true
         :config-path "/app/mail.yaml"

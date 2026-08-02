@@ -10,6 +10,7 @@ build:
 	clj -T:build uber
 
 test:
+	clojure -M:test
 	$(MAKE) -C ../personalist test
 	$(MAKE) -C ../blog test
 	$(MAKE) -C ../tracker test

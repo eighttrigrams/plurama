@@ -123,16 +123,32 @@
       {}
       agent-apps)))
 
+(defn ai-app-ctxs
+  "The subset of `app-ctxs` the AI agent may reach as tools. `ai/chat` builds the
+  model's tool surface from the keys of what it is handed, so an app in this map
+  is an app the model may call on its own judgment.
+
+  An app is only here when its config says `:ai-visible? true`. Default-invisible
+  is the point: omit the flag on a future app and the AI cannot reach it, which is
+  a visible failure fixed in one line — the reverse default would make a
+  prefix-only credential silently callable by the model."
+  [agent-apps app-ctxs]
+  (select-keys app-ctxs
+               (->> agent-apps
+                    (keep (fn [[app-key {:keys [ai-visible?]}]]
+                            (when (true? ai-visible?) (name app-key))))
+                    set)))
+
 (defn- handle-update
   [{:keys [conn anthropic-key bot-token agent-apps system-prompt] :as agent-ctx}
    from-id chat-id text]
   (if-let [{:keys [user_id]} (db/lookup-telegram-user conn from-id)]
-    ;; tracker-direct is the message-only tracker user used for the
-    ;; T/TT/N prefix shortcuts; it must not appear in the AI's tool
-    ;; surface, so we strip it from the map handed to ai/chat.
+    ;; The prefix apps are deliberately weak credentials used by the T/TT/N
+    ;; shortcuts; they must not appear in the AI's tool surface, which the
+    ;; :ai-visible? flag on each configured app now decides.
     (let [app-ctxs    (build-app-ctxs conn user_id agent-apps)
           direct-ctx  (get app-ctxs "tracker-direct")
-          ai-app-ctxs (dissoc app-ctxs "tracker-direct")
+          ai-ctxs     (ai-app-ctxs agent-apps app-ctxs)
           shortcut    (prefix-match text)]
       (cond
         (= "/clear" (some-> text str/trim str/lower-case))
@@ -147,13 +163,13 @@
           bot-token chat-id
           "No tracker-direct credentials configured for your account.")
 
-        (seq ai-app-ctxs)
+        (seq ai-ctxs)
         (try
           (let [reply-text (ai/chat
                              {:conn conn
                               :user-id user_id
                               :anthropic-key anthropic-key
-                              :app-ctxs ai-app-ctxs
+                              :app-ctxs ai-ctxs
                               :system-prompt system-prompt}
                              text)]
             (send-telegram-message bot-token chat-id reply-text))
