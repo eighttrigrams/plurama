@@ -54,7 +54,7 @@ COPY music/resources       ./music/resources
 RUN cd music && npx shadow-cljs release app
 
 COPY cookbook/package.json cookbook/package-lock.json ./cookbook/
-RUN cd cookbook && npm ci
+RUN cd cookbook && npm install
 
 COPY cookbook/shadow-cljs.edn ./cookbook/
 COPY cookbook/deps.edn        ./cookbook/
