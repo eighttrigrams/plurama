@@ -57,6 +57,11 @@
                                        rest lands as a plain inbox message. `np`
                                        scopes it private, `nw` work, plain `n`
                                        leaves it unscoped.
+    {:kind :blog-note :forward stripped}
+                                    — `b<ws>` (case-insensitive). Strip the
+                                       prefix; the rest becomes a Note in blog's
+                                       Notes box. A different thing from :note
+                                       above, which is a tracker inbox message.
     nil                             — no prefix; the AI agent handles it."
   [text]
   (when (string? text)
@@ -65,7 +70,9 @@
         (when-let [[_ scope-char body] (re-matches #"(?si)n([pw]?)\s+(.+)" text)]
           {:kind :note
            :scope (case (str/lower-case scope-char) "p" "private" "w" "work" nil)
-           :forward (str/trim body)}))))
+           :forward (str/trim body)})
+        (when-let [[_ body] (re-matches #"(?si)b\s+(.+)" text)]
+          {:kind :blog-note :forward (str/trim body)}))))
 
 (defn- forward-to-tracker!
   "POST `text` as a fresh message into the user's tracker inbox.
@@ -80,29 +87,51 @@
               :title text}
        (#{"private" "work"} scope) (assoc :scope scope)))))
 
+(defn- forward-to-blog-notes!
+  "POST `text` as a Note into blog's Notes box. `blog-ctx` carries the
+  blog notes-user credentials — a credential that may deliver a Note and
+  do nothing else. Returns the HTTP response map."
+  [blog-ctx text]
+  (app-client/request
+    blog-ctx "POST" "/api/notes"
+    {:title text :source "telegram"}))
+
+(def ^:private prefix-targets
+  "Per prefix kind: the configured app that delivers it, and how to name that app
+  to the user. `:app` is the key both the config and the user's credential rows
+  use, so a missing-credential message can say which of the two it means."
+  {:task      {:app "tracker-direct" :label "Tracker"}
+   :note      {:app "tracker-direct" :label "Tracker"}
+   :blog-note {:app "blog-notes"     :label "Blog"}})
+
 (defn- handle-prefix!
-  "Run the prefix shortcut against tracker and reply over Telegram.
-  `tracker-ctx` is the per-user {:base-url :username :password} map."
-  [{:keys [bot-token]} chat-id tracker-ctx {:keys [kind forward scope]}]
-  (try
-    (let [{:keys [status]} (forward-to-tracker! tracker-ctx forward scope)]
-      (if (<= 200 status 299)
+  "Run the prefix shortcut against the app that owns its kind and reply over
+  Telegram. `app-ctx` is the per-user {:base-url :username :password} map for
+  that app."
+  [{:keys [bot-token]} chat-id app-ctx {:keys [kind forward scope]}]
+  (let [{:keys [label]} (prefix-targets kind)]
+    (try
+      (let [{:keys [status]} (if (= :blog-note kind)
+                               (forward-to-blog-notes! app-ctx forward)
+                               (forward-to-tracker! app-ctx forward scope))]
+        (if (<= 200 status 299)
+          (send-telegram-message
+            bot-token chat-id
+            (case kind
+              :task "Forwarded to tracker."
+              :note (case scope
+                      "private" "Saved to inbox (private)."
+                      "work" "Saved to inbox (work)."
+                      "Saved to inbox.")
+              :blog-note "Saved to blog's Notes box."))
+          (send-telegram-message
+            bot-token chat-id
+            (str label " rejected the forward (" status ")."))))
+      (catch Exception e
+        (println "Failed to forward prefixed message to" label ":" (.getMessage e))
         (send-telegram-message
           bot-token chat-id
-          (case kind
-            :task "Forwarded to tracker."
-            :note (case scope
-                    "private" "Saved to inbox (private)."
-                    "work" "Saved to inbox (work)."
-                    "Saved to inbox.")))
-        (send-telegram-message
-          bot-token chat-id
-          (str "Tracker rejected the forward (" status ")."))))
-    (catch Exception e
-      (println "Failed to forward prefixed message to tracker:" (.getMessage e))
-      (send-telegram-message
-        bot-token chat-id
-        "Failed to reach tracker."))))
+          (str "Failed to reach " (str/lower-case label) "."))))))
 
 (defn- build-app-ctxs
   "Intersect the configured agent apps with the user's per-app
@@ -143,25 +172,26 @@
   [{:keys [conn anthropic-key bot-token agent-apps system-prompt] :as agent-ctx}
    from-id chat-id text]
   (if-let [{:keys [user_id]} (db/lookup-telegram-user conn from-id)]
-    ;; The prefix apps are deliberately weak credentials used by the T/TT/N
+    ;; The prefix apps are deliberately weak credentials used by the T/TT/N/B
     ;; shortcuts; they must not appear in the AI's tool surface, which the
     ;; :ai-visible? flag on each configured app now decides.
     (let [app-ctxs    (build-app-ctxs conn user_id agent-apps)
-          direct-ctx  (get app-ctxs "tracker-direct")
           ai-ctxs     (ai-app-ctxs agent-apps app-ctxs)
-          shortcut    (prefix-match text)]
+          shortcut    (prefix-match text)
+          target      (prefix-targets (:kind shortcut))
+          prefix-ctx  (get app-ctxs (:app target))]
       (cond
         (= "/clear" (some-> text str/trim str/lower-case))
         (do (db/clear-history! conn user_id)
             (send-telegram-message bot-token chat-id "Conversation history cleared."))
 
-        (and shortcut direct-ctx)
-        (handle-prefix! agent-ctx chat-id direct-ctx shortcut)
+        (and shortcut prefix-ctx)
+        (handle-prefix! agent-ctx chat-id prefix-ctx shortcut)
 
-        (and shortcut (not direct-ctx))
+        (and shortcut (not prefix-ctx))
         (send-telegram-message
           bot-token chat-id
-          "No tracker-direct credentials configured for your account.")
+          (str "No " (:app target) " credentials configured for your account."))
 
         (seq ai-ctxs)
         (try

@@ -13,7 +13,10 @@
          ;; T/TT/N Telegram prefix shortcuts that bypass the AI agent.
          ;; The tracker-side user only needs message-write permissions.
          ;; Not :ai-visible? — the AI agent should not see this app at all.
-         :tracker-direct {:base-url "http://127.0.0.1:3027"}}
+         :tracker-direct {:base-url "http://127.0.0.1:3027"}
+         ;; blog-notes is blog's notes user, used for the B prefix. It may
+         ;; deliver a Note and nothing else, and the AI must not see it either.
+         :blog-notes     {:base-url "http://127.0.0.1:3130"}}
  ;; :mail only runs in prod-mode (see plurama.server). Set :enabled? true
  ;; in config.prod.edn; mail.yaml holds the per-user IMAP credentials and
  ;; is gitignored.
