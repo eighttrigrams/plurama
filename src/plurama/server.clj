@@ -9,6 +9,7 @@
             [et.tr.server :as tracker]
             [et.trn.server :as treina]
             [et.mu.server :as music]
+            [et.cb.server :as cookbook]
             [plurama.app.server :as plurama-app])
   (:gen-class))
 
@@ -51,7 +52,9 @@
                 :treina      (some-> (get-in config [:apps :treina])
                                      treina/build-app)
                 :music       (some-> (get-in config [:apps :music])
-                                     music/build-app)}
+                                     music/build-app)
+                :cookbook    (some-> (get-in config [:apps :cookbook])
+                                     cookbook/build-app)}
         _      (when (and (prod-mode?)
                           (get-in config [:apps :tracker :workers?]))
                  (tracker/start-workers!))

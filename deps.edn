@@ -18,7 +18,8 @@
         eighttrigrams/blog               {:local/root "../blog"}
         eighttrigrams/tracker            {:local/root "../tracker"}
         eighttrigrams/treina             {:local/root "../treina"}
-        eighttrigrams/music              {:local/root "../music"}}
+        eighttrigrams/music              {:local/root "../music"}
+        eighttrigrams/cookbook           {:local/root "../cookbook"}}
  :aliases {:run {:exec-fn plurama.server/-main}
            :test {:extra-paths ["test"]
                   :extra-deps {io.github.cognitect-labs/test-runner {:git/tag "v0.5.1"
