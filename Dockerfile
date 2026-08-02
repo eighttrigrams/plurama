@@ -53,10 +53,8 @@ COPY music/resources       ./music/resources
 
 RUN cd music && npx shadow-cljs release app
 
-# No package-lock.json here yet — unlike the four siblings above, cookbook has
-# none committed. Restore the sibling shape once it is: see handoffs/cookbook-spin-up-report.md
-COPY cookbook/package.json ./cookbook/
-RUN cd cookbook && npm install
+COPY cookbook/package.json cookbook/package-lock.json ./cookbook/
+RUN cd cookbook && npm ci
 
 COPY cookbook/shadow-cljs.edn ./cookbook/
 COPY cookbook/deps.edn        ./cookbook/
