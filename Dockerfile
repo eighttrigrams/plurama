@@ -53,6 +53,18 @@ COPY music/resources       ./music/resources
 
 RUN cd music && npx shadow-cljs release app
 
+# us-vs-them is a library and not an app: no npm, no shadow-cljs, nothing to
+# release. It is here because cookbook/deps.edn names it {:local/root
+# "../us-vs-them"} and tools.deps resolves that relative to the file declaring
+# it — so the uberjar step below follows /opt/plurama → /opt/cookbook →
+# /opt/us-vs-them, and without this the build dies at once with
+#     Local lib eighttrigrams/us-vs-them not found: /opt/us-vs-them
+# Its `src` goes into the uberjar the same way cookbook's does: `b/uber` walks the
+# basis, and a :local/root lib's :paths are on it. That is why there is no
+# copy-dir or ns-compile entry for it in plurama/build.clj either.
+COPY us-vs-them/deps.edn ./us-vs-them/
+COPY us-vs-them/src      ./us-vs-them/src
+
 COPY cookbook/package.json cookbook/package-lock.json ./cookbook/
 RUN cd cookbook && npm install
 
