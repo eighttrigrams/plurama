@@ -5,6 +5,12 @@ WORKDIR /opt
 RUN apk add --no-cache nodejs npm
 
 COPY personalist/package.json personalist/package-lock.json ./personalist/
+# personalist depends on the IJKL editor library as `file:vendor/...tgz`. The
+# library itself lives outside this build context (in the keyboard-wizardry repo),
+# so what is committed here is the packed tarball, and npm install below needs it
+# on disk before it runs. ../vendor-editor.sh keeps it and blog's bundle in step
+# with the library, and plurama's `make check-editor` fails a deploy if they drift.
+COPY personalist/vendor ./personalist/vendor
 RUN cd personalist && npm install
 
 COPY personalist/shadow-cljs.edn ./personalist/

@@ -1,4 +1,4 @@
-.PHONY: start stop build test deploy preflight check-context backup backup-replay-blog backup-replay-personalist backup-replay-tracker clean
+.PHONY: start stop build test deploy preflight check-context check-editor backup backup-replay-blog backup-replay-personalist backup-replay-tracker clean
 
 start:
 	@DEV=true clj -X:run
@@ -52,7 +52,16 @@ check-context:
 	done; \
 	echo "  ✓ .dockerignore allowlists every app the Dockerfile COPYs"
 
-preflight: check-context
+# blog and personalist both carry a committed copy of the editor library, which
+# lives outside this workspace and so cannot be copied into a build context. A
+# derived file committed beside its source goes stale silently — and the repo it
+# derives from is in neither the loop below nor the Dockerfile, so nothing else
+# here would ever notice. ../vendor-editor.sh --check rebuilds both copies into a
+# temp dir and compares bytes.
+check-editor:
+	@../vendor-editor.sh --check
+
+preflight: check-context check-editor
 	@set -e; \
 	for r in plurama blog tracker personalist treina music cookbook us-vs-them; do \
 		dir=".."; if [ "$$r" = "plurama" ]; then dir="."; else dir="../$$r"; fi; \
