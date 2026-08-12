@@ -27,6 +27,11 @@ COPY blog/src        ./blog/src
 COPY blog/resources  ./blog/resources
 
 COPY tracker/package.json tracker/package-lock.json ./tracker/
+# As for personalist above: the IJKL editor library is a file: dependency on a
+# packed tarball committed here, because the library itself lives outside this
+# build context. ../vendor-editor.sh keeps it in step; `make check-editor` fails
+# a deploy if it drifts.
+COPY tracker/vendor ./tracker/vendor
 RUN cd tracker && npm install
 
 COPY tracker/shadow-cljs.edn ./tracker/
