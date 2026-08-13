@@ -43,6 +43,9 @@ COPY tracker/resources       ./tracker/resources
 RUN cd tracker && npx shadow-cljs release app
 
 COPY treina/package.json treina/package-lock.json ./treina/
+# As for personalist and tracker above: the packed editor library, because the
+# library itself is outside this build context.
+COPY treina/vendor ./treina/vendor
 RUN cd treina && npm install
 
 COPY treina/shadow-cljs.edn ./treina/
@@ -54,6 +57,8 @@ COPY treina/resources       ./treina/resources
 RUN cd treina && npx shadow-cljs release app
 
 COPY music/package.json music/package-lock.json ./music/
+# As above.
+COPY music/vendor ./music/vendor
 RUN cd music && npm install
 
 COPY music/shadow-cljs.edn ./music/
