@@ -2,9 +2,11 @@
   (:require [clojure.test :refer [deftest is testing]]
             [clojure.java.io :as io]
             [aero.core :as aero]
+            [plurama.app.agent.app-client :as app-client]
             [plurama.app.agent.telegram :as telegram]))
 
 (def ^:private prefix-match #'telegram/prefix-match)
+(def ^:private forward-to-blog-notes! #'telegram/forward-to-blog-notes!)
 
 (deftest the-b-prefix-forwards-to-blogs-notes-box
   (testing "the prefix is stripped and the rest is the Note"
@@ -12,8 +14,8 @@
   (testing "case-insensitive, like the tracker prefixes"
     (is (= {:kind :blog-note :forward "buy milk"} (prefix-match "B buy milk"))))
   (testing "any whitespace separates it, and the body keeps its own newlines"
-    (is (= {:kind :blog-note :forward "a title\nand more"}
-           (prefix-match "b\ta title\nand more"))))
+    (is (= {:kind :blog-note :forward "one line\nand more"}
+           (prefix-match "b\tone line\nand more"))))
   (testing "a bare b is not a prefix — there is no body after it to forward"
     (is (nil? (prefix-match "b"))))
   (testing "a whitespace-only body forwards empty, exactly as the n prefix does"
@@ -22,6 +24,22 @@
     ;; are kept identical rather than one of them made stricter.
     (is (= {:kind :blog-note :forward ""} (prefix-match "b   ")))
     (is (= "" (:forward (prefix-match "n   "))))))
+
+;; A blog Note is a single text field — it has no title and no description to
+;; split into. The body of this POST is the contract with blog's /api/notes, and
+;; nothing else here would notice it drifting.
+(deftest a-forwarded-note-is-delivered-as-one-text
+  (let [sent (atom nil)]
+    (with-redefs [app-client/request (fn [ctx method path body]
+                                       (reset! sent {:ctx ctx :method method
+                                                     :path path :body body})
+                                       {:status 201})]
+      (forward-to-blog-notes! {:base-url "http://blog"} "one line\nand more"))
+    (is (= {:ctx {:base-url "http://blog"}
+            :method "POST"
+            :path "/api/notes"
+            :body {:text "one line\nand more" :source "telegram"}}
+           @sent))))
 
 (deftest the-b-prefix-does-not-collide-with-the-tracker-ones
   (testing "the tracker kinds are untouched"

@@ -90,11 +90,13 @@
 (defn- forward-to-blog-notes!
   "POST `text` as a Note into blog's Notes box. `blog-ctx` carries the
   blog notes-user credentials — a credential that may deliver a Note and
-  do nothing else. Returns the HTTP response map."
+  do nothing else. A Note is one text field, so a multi-line `b` message
+  goes over whole rather than being split into a title and a body.
+  Returns the HTTP response map."
   [blog-ctx text]
   (app-client/request
     blog-ctx "POST" "/api/notes"
-    {:title text :source "telegram"}))
+    {:text text :source "telegram"}))
 
 (def ^:private prefix-targets
   "Per prefix kind: the configured app that delivers it, and how to name that app
