@@ -82,6 +82,8 @@ COPY us-vs-them/deps.edn ./us-vs-them/
 COPY us-vs-them/src      ./us-vs-them/src
 
 COPY cookbook/package.json cookbook/package-lock.json ./cookbook/
+# As above.
+COPY cookbook/vendor ./cookbook/vendor
 RUN cd cookbook && npm install
 
 COPY cookbook/shadow-cljs.edn ./cookbook/
