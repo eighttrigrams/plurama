@@ -78,6 +78,7 @@ preflight: check-context check-editor
 
 deploy: preflight test backup
 	@test -s mail.yaml || { echo "Missing or empty plurama/mail.yaml"; exit 1; }
+	@test -s config.prod.edn || { echo "Missing or empty plurama/config.prod.edn - run dotfiles/install.sh"; exit 1; }
 	cd .. && fly deploy --config plurama/fly.toml --dockerfile plurama/Dockerfile
 
 backup-replay-blog:

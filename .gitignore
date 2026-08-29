@@ -6,6 +6,7 @@ target
 config.edn
 config.edn.*
 !config.edn.template
+config.prod.edn
 mail.yaml
 mail.yaml.*
 !mail.yaml.template
