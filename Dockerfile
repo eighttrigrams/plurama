@@ -67,6 +67,20 @@ COPY music/build.clj       ./music/
 COPY music/src             ./music/src
 COPY music/resources       ./music/resources
 
+# Corvo, before music's release build and not after it, because that build
+# compiles corvo's ClojureScript: music/shadow-cljs.edn carries
+# "../corvo/src/lib" on :source-paths, and music/deps.edn names
+# {:local/root "../corvo"} for the assets under corvo/resources/public/corvo.
+#
+# No package.json, no npm install, no shadow-cljs release of its own — like
+# us-vs-them below, corvo is a library here rather than an app. It has no npm
+# dependency music does not already install, and it produces no JavaScript
+# artefact: its namespaces go into music's bundle and its resources go onto the
+# classpath, which is why this sibling is COPYed without a build step.
+COPY corvo/deps.edn   ./corvo/
+COPY corvo/src        ./corvo/src
+COPY corvo/resources  ./corvo/resources
+
 RUN cd music && npx shadow-cljs release app
 
 # us-vs-them is a library and not an app: no npm, no shadow-cljs, nothing to
