@@ -17,6 +17,7 @@ test:
 	$(MAKE) -C ../treina test
 	$(MAKE) -C ../music test
 	$(MAKE) -C ../cookbook test
+	$(MAKE) -C ../athelney test
 	$(MAKE) -C ../corvo test
 	$(MAKE) -C ../tracker e2e-docker
 
@@ -64,7 +65,7 @@ check-editor:
 
 preflight: check-context check-editor
 	@set -e; \
-	for r in plurama blog tracker personalist treina music cookbook us-vs-them corvo; do \
+	for r in plurama blog tracker personalist treina music cookbook athelney us-vs-them corvo; do \
 		dir=".."; if [ "$$r" = "plurama" ]; then dir="."; else dir="../$$r"; fi; \
 		echo "Preflight: $$r"; \
 		branch=$$(git -C "$$dir" rev-parse --abbrev-ref HEAD); \

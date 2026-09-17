@@ -10,6 +10,7 @@
             [et.trn.server :as treina]
             [et.mu.server :as music]
             [et.cb.server :as cookbook]
+            [et.ath.server :as athelney]
             [plurama.app.server :as plurama-app])
   (:gen-class))
 
@@ -54,7 +55,9 @@
                 :music       (some-> (get-in config [:apps :music])
                                      music/build-app)
                 :cookbook    (some-> (get-in config [:apps :cookbook])
-                                     cookbook/build-app)}
+                                     cookbook/build-app)
+                :athelney    (some-> (get-in config [:apps :athelney])
+                                     athelney/build-app)}
         _      (when (and (prod-mode?)
                           (get-in config [:apps :tracker :workers?]))
                  (tracker/start-workers!))

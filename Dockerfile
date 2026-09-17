@@ -108,6 +108,14 @@ COPY cookbook/resources       ./cookbook/resources
 
 RUN cd cookbook && npx shadow-cljs release app
 
+# athelney is server-rendered Clojure with no ClojureScript, so it takes blog's
+# short block and not tracker's: no package.json, no npm install, no
+# `shadow-cljs release`. There is simply no JavaScript to build.
+COPY athelney/deps.edn   ./athelney/
+COPY athelney/build.clj  ./athelney/
+COPY athelney/src        ./athelney/src
+COPY athelney/resources  ./athelney/resources
+
 COPY plurama/deps.edn  ./plurama/
 COPY plurama/build.clj ./plurama/
 COPY plurama/src       ./plurama/src
